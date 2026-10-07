@@ -286,3 +286,7 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .chipgrid.grid2 .chipbtns button { width: 100%; height: 34px; font-size: 1.3rem; line-height: 1; }
 @media (max-height: 600px) { .chipgrid.grid2 .chipbtns button { height: 30px; } .chipgrid.grid2 .stacks { min-height: 22px; } .chipcell .kindhead svg.bag-sm { width: min(96px, 14vh, calc(50vw - 93px)); } .chipgrid.grid2 { gap: 6px 8px; } .chipcell { padding: 4px 6px; } }
 .chipgrid.grid2.locked .chipbtns { display: none; }
+
+.shelfcap { font-size: .68rem; font-weight: 800; color: var(--accent); line-height: 1.1; text-align: center; }
+
+@media (max-height: 600px) { .chipcol .kindhead svg.bag-sm { width: min(50px, 100%); } .shelfcap { font-size: .64rem; } }

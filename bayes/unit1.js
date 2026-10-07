@@ -25,7 +25,7 @@ const drawsFrom = (rng, p, n) => Array.from({ length: n }, () => BM.drawShape(rn
 // ---------------------------------------------------------------------------
 function buildPrior(ctx) {
   const rng = ctx.rng, counts = randomShelf(rng), expected = counts.map(c => c / 5 * 10);
-  ctx.setPrompt('One bag is picked from this shelf of five. Before anything is drawn, spread your <b>10 chips</b> to show how likely each kind is.');
+  ctx.setPrompt('The shelf holds 5 bags (the small bags under each kind). You pick one without looking. Bet your <b>10 chips</b> on its kind: more chips where the shelf has more.');
   const panel = ChipsPanel({ heads: headsFor(counts), total: 10, onChange: c => ctx.setReady(sumOf(c) === 10) });
   ctx.stage.append(panel.el);
   return {
@@ -76,7 +76,7 @@ function buildProduct(ctx) {
     if (l1(pieces.prior, pieces.post) >= 0.4 && l1(likShare, pieces.post) >= 0.4) break;
   }
   const expected = pieces.post.map(x => x * 10);
-  ctx.setPrompt(`One bag is picked from the shelf and ${n === 1 ? 'one shape is' : 'two shapes are'} drawn. Spread your <b>10 chips</b> to show how likely each kind is <b>now</b>.`);
+  ctx.setPrompt(`You picked a bag from the shelf and drew ${n === 1 ? 'the shape' : 'the shapes'} shown. Now bet your <b>10 chips</b> on which kind of bag it is.`);
   const tray = Tray(); draws.forEach(d => tray.add(d));
   const panel = ChipsPanel({ heads: headsFor(counts), total: 10, onChange: c => ctx.setReady(sumOf(c) === 10) });
   ctx.stage.append(el('div', { class: 'bigshape' }, 'Drawn:', tray.el), panel.el);
@@ -255,11 +255,11 @@ UNITS[1] = {
   intro: 'The three pieces of every Bayesian update. You will build each one yourself before it gets a name.',
   subs: [
     { id: 'u1-prior', name: 'Before the draw', blurb: 'Belief follows the shelf.', kind: 'streak', target: 5, hearts: 2, build: buildPrior,
-      help: 'Use + and − to spread all 10 chips over the kinds of bag, so each kind gets a share of the chips that matches its share of the shelf.' },
+      help: 'There are four kinds of bag, shown by how many circles they hold. The small bags under each kind show how many of the five bags on the shelf are that kind. You pick one at random, without looking inside. Use + and − to bet your 10 chips on which kind it is: the more of the shelf a kind fills, the more chips it should get. For example, a kind that is 2 of the 5 bags should get 4 of the 10 chips.' },
     { id: 'u1-lik', name: 'What fits the draw?', blurb: 'How well each bag explains it.', kind: 'streak', target: 5, hearts: 2, build: buildLikelihood,
       help: 'For each kind of bag, build a stack showing how many of 10 draws from that bag would show the shape. Count the matching shapes in the picture.' },
     { id: 'u1-product', name: 'Put them together', blurb: 'The shelf and the draw.', kind: 'streak', target: 5, hearts: 2, build: buildProduct,
-      help: 'Spread 10 chips to show how likely each kind is after the draw. Think about both how common each kind is and how well it explains what was drawn.' },
+      help: 'You picked a bag from the shelf and drew the shape(s) shown. Bet your 10 chips on which kind of bag it is. Think about both how common each kind is on the shelf and how well it explains what you drew.' },
     { id: 'u1-names', name: 'Which is which?', blurb: 'Name the three rows.', kind: 'streak', target: 5, hearts: 2, build: buildNames,
       help: 'Three rows of bars: one is what you believed before, one is how well each kind explains the draw, one is what you believe after. Tap the row you are asked for.' },
     { id: 'u1-imagine-tut', name: 'First imagined shape', blurb: 'Tilt a flat belief.', kind: 'tutorial', build: buildImagineTut,

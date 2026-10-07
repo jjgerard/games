@@ -265,10 +265,14 @@ function ChipsPanel({ heads, total = 10, perMax = 10, grid = false, onChange = (
 
 // A column of a kind of bag: its picture and its share of circles, plus how
 // many such bags are on the shelf (small sealed bags) when `count` is given.
-function KindHead(p, seed, count = null, compact = false) {
+function KindHead(p, seed, count = null, compact = false, shelfTotal = 5) {
   const nc = BM.circlesPerTen(p);
   const kids = [el('div', { html: bagSVG(nc, 10 - nc, { seed, size: 64 }) }), el('div', { class: 'stage-note' }, compact ? `${pct(p)}%` : `${pct(p)}% circles`)];
-  if (count != null) kids.push(el('div', { class: 'shelfstack', 'aria-label': `${count} on the shelf` }, Array.from({ length: count }, () => el('span', { html: miniBag('') }))));
+  if (count != null) {
+    kids.push(el('div', { class: 'shelfstack', 'aria-label': `${count} of ${shelfTotal} bags on the shelf` }, Array.from({ length: count }, () => el('span', { html: miniBag('') }))));
+    // say what the little bags are: this many of the shelf's bags are this kind
+    if (!compact) kids.push(el('div', { class: 'shelfcap' }, `${count} of ${shelfTotal} bags`));
+  }
   return { node: el('div', { class: 'kindhead' + (compact ? ' compact' : '') }, kids), label: `${pct(p)}% circles bag` };
 }
 
