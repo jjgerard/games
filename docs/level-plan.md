@@ -105,7 +105,7 @@ Follows the slide order; the starred slides are the key drills.
 - Typically included, not yet planned: readr/tibbles, `|>`, stringr/forcats/lubridate, other join types, tidy-data checks.
 
 ## Game C: Regression, scales and mixed-effects models (stats; R only as the tool)
-Proposed as two parts so the most frequent snag (scales) is fixed before random effects.
+Decided: one game in two parts, so the most frequent snag (scales) is fixed before random effects.
 Short placement: link vs response scale; within vs between; fixed vs random.
 
 **Part 1: Regression and scales**
@@ -135,6 +135,7 @@ Short placement: link vs response scale; within vs between; fixed vs random.
 Similarity-based interference in psycholinguistics. Git/GitHub (optional small safe-sandbox game).
 
 ## Open items
-- Whether Game C stays one game in two parts or becomes two games.
+- Decided: Game C is one game in two parts.
 - Real R in the browser (WebR) vs simulated checking.
-- Whether to attach jjgerard/research-methods (and shapes) to reuse the shell.
+- Decided: reuse the jjgerard/research-methods shell (quiz/streak/graph/typed-answer). Borrow drag-and-snap pieces from jjgerard/shapes only where an activity needs assembling tiles (R part 2 pipelines). Both repos were cloned read-only for reference; neither can be pushed to from this session.
+- Answer keys cannot be run here: R is not installed in this environment (Python and Node are). Either install R to verify keys, or verify numerics in Python.
