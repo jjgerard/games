@@ -43,10 +43,12 @@ function renderUnits() {
   const grid = $('unit-grid'); grid.innerHTML = '';
   UNITS.forEach((u, i) => {
     const done = u.subs.length && u.subs.every(s => isDone(s.id));
-    const t = el('button', { class: 'tile' + (u.locked ? ' locked' : '') + (done ? ' done' : ''), disabled: u.locked, onclick: () => openUnit(u) },
-      el('span', { class: 'tile-num' }, u.locked ? String(i) : `UNIT ${i}`),
+    // a unit opens once it exists and the one before it is finished
+    const locked = !u.subs.length || (i > 0 && !UNITS[i - 1].subs.every(s => isDone(s.id)));
+    const t = el('button', { class: 'tile' + (locked ? ' locked' : '') + (done ? ' done' : ''), disabled: locked, onclick: () => openUnit(u) },
+      el('span', { class: 'tile-num' }, locked ? String(i) : `UNIT ${i}`),
       el('span', { class: 'tile-name' }, u.title.replace(/^Unit \d+: /, '')),
-      el('span', { class: 'tile-blurb' }, u.locked ? '' : `${u.subs.filter(s => isDone(s.id)).length} of ${u.subs.length} done`));
+      el('span', { class: 'tile-blurb' }, locked ? '' : `${u.subs.filter(s => isDone(s.id)).length} of ${u.subs.length} done`));
     grid.append(t);
   });
 }
@@ -203,7 +205,7 @@ function placementResult() {
   for (let i = 0; i < upTo; i++) unlocked.push(...PLACEMENT[i].unlocks);
   const startSub = firstMiss === -1 ? null : UNITS[0].subs.find(s => !unlocked.includes(s.id));
   stage.append(el('p', {}, firstMiss === -1
-    ? 'You got every picture right. Unit 0 is marked as done. The next units are still being built, so for now you can replay any sub-level.'
+    ? 'You got every picture right. Unit 0 is marked as done, and Unit 1 is open.'
     : `You got ${upTo} of ${PLACEMENT.length} right before the first miss. You will start at "${startSub.name}", and everything before it is marked as done.`),
     el('div', { class: 'stage-note' }, 'No points for skipped levels. You can replay any of them.'));
   setFeedback('');

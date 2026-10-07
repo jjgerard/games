@@ -229,6 +229,90 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
+  // ---------------- Unit 1 ----------------
+  {
+    const U0 = ['u0-draw', 'u0-slide', 'u0-share', 'u0-many', 'u0-inside', 'u0-flip', 'u0-two', 'u0-several', 'u0-rare', 'u0-chips'];
+    const ctx0 = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    const p0 = await ctx0.newPage(); await p0.goto(URL + '?seed=2'); await p0.evaluate(() => localStorage.clear()); await p0.reload();
+    await p0.click('#btn-start');
+    ok('Unit 1 is locked until Unit 0 is finished', await p0.$$eval('#unit-grid .tile', t => t[1].disabled));
+    await ctx0.close();
+    for (const [w, h] of SIZES) {
+      const tag = `U1 ${w}x${h}`;
+      const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+      const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+      await page.goto(URL + '?seed=17'); await page.evaluate(done => localStorage.setItem('bayes:v1', JSON.stringify({ points: 500, started: true, done })), U0); await page.reload();
+      await page.click('#btn-continue');
+      ok(`${tag} Unit 1 opens once Unit 0 is done`, await page.$$eval('#unit-grid .tile', t => !t[1].disabled));
+      await page.click('#unit-grid .tile:nth-child(2)');
+      const subs = await page.$$eval('#sub-grid .tile', t => t.length);
+      ok(`${tag} unit 1 has 8 sub-levels`, subs === 8, String(subs));
+      for (let i = 0; i < subs; i++) {
+        await page.click(`#sub-grid .tile:nth-child(${i + 1})`);
+        const sub = await page.evaluate(() => ({ id: __run.sub.id, kind: __run.sub.kind }));
+        await page.waitForSelector('#stage > *'); await checkFit(page, `${tag} ${sub.id} start`);
+        if (sub.kind === 'tutorial') {
+          await page.evaluate(() => __run.ctrl.solve()); await page.waitForFunction(() => __run.finished);
+          await checkFit(page, `${tag} ${sub.id} done`); await page.evaluate(() => document.getElementById('quiz-action').click());
+        } else {
+          await page.evaluate(() => __run.ctrl.solveWrong());
+          ok(`${tag} ${sub.id} check enabled when answered wrongly`, await page.isEnabled('#quiz-action'));
+          await page.evaluate(() => document.getElementById('quiz-action').click());
+          const wrong = await page.evaluate(() => ({ cls: document.getElementById('quiz-feedback').className, hearts: __run.game.missesLeft }));
+          ok(`${tag} ${sub.id} wrong answer marked wrong, heart used`, wrong.cls.includes('bad') && wrong.hearts === 1, JSON.stringify(wrong));
+          await checkFit(page, `${tag} ${sub.id} after wrong answer`);
+          await page.evaluate(() => document.getElementById('quiz-action').click());
+          for (let k = 0; k < 5; k++) {
+            await page.evaluate(() => __run.ctrl.solve()); await checkFit(page, `${tag} ${sub.id} q${k + 1} ready`);
+            ok(`${tag} ${sub.id} q${k + 1} check enabled`, await page.isEnabled('#quiz-action'));
+            await page.evaluate(() => document.getElementById('quiz-action').click());
+            const good = await page.evaluate(() => document.getElementById('quiz-feedback').className);
+            ok(`${tag} ${sub.id} q${k + 1} right answer accepted`, good.includes('good'), await page.textContent('#quiz-feedback'));
+            await checkFit(page, `${tag} ${sub.id} q${k + 1} revealed`);
+            if (k < 4) await page.evaluate(() => document.getElementById('quiz-action').click());
+          }
+          await page.evaluate(() => document.getElementById('quiz-action').click());
+        }
+        await page.waitForSelector('#quiz-overlay.hidden', { state: 'attached' });
+        ok(`${tag} ${sub.id} marked done`, (await page.$$eval('#sub-grid .tile.done', t => t.length)) === i + 1);
+      }
+      ok(`${tag} no page errors`, errors.length === 0, errors.join(' | '));
+      await ctx.close();
+    }
+    // real interaction on the new controls
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(URL + '?seed=5'); await page.evaluate(() => localStorage.clear()); await page.reload();
+    await page.evaluate(() => openActivity(UNITS[1].subs.find(s => s.id === 'u1-imagine-tut'))); await page.waitForSelector('.bigbtn.flash');
+    ok('imagine tutorial: only + circle, flashing', (await page.$$eval('#stage button', b => b.map(x => x.textContent.trim()))).join() === '+ circle');
+    const a0 = await page.$$eval('.tray svg', s => s.length);
+    await page.click('#stage .bigbtn'); await page.waitForFunction(() => __run.finished);
+    ok('tapping + circle adds an imagined circle (flat pair 2 -> 3 shapes)', a0 === 2 && (await page.$$eval('.tray svg', s => s.length)) === 3, String(a0));
+    await page.evaluate(() => { closeActivity(); openActivity(UNITS[1].subs.find(s => s.id === 'u1-imagine')); }); await page.waitForSelector('.curveview svg');
+    const beforeMean = await page.textContent('.stage-note');
+    await page.click('text=+ circle'); await page.click('text=+ circle'); await page.click('text=+ square');
+    ok('imagine: counts update (3 circles, 2 squares)', /3 imagined circles and 2 imagined squares/.test(await page.textContent('.stage-note')), await page.textContent('.stage-note'));
+    await page.click('text=Start again');
+    ok('imagine: Start again returns to the flat pair', /1 imagined circle and 1 imagined square/.test(await page.textContent('.stage-note')));
+    // marker drag on the shift level
+    await page.evaluate(() => { closeActivity(); openActivity(UNITS[1].subs.find(s => s.id === 'u1-shift')); }); await page.waitForSelector('.as-thumb');
+    const tr = await (await page.$('.as-track')).boundingBox();
+    await page.mouse.move(tr.x + tr.width * 0.5, tr.y + tr.height / 2); await page.mouse.down(); await page.mouse.move(tr.x + tr.width * 0.8, tr.y + tr.height / 2, { steps: 6 }); await page.mouse.up();
+    const mv = await page.$eval('.as-thumb', e => Number(e.getAttribute('aria-valuenow')));
+    ok('dragging the marker moves it to 80%', mv >= 78 && mv <= 82, String(mv));
+    // two handles: pressing near the right handle moves only the right one
+    await page.evaluate(() => { closeActivity(); openActivity(UNITS[1].subs.find(s => s.id === 'u1-interval')); }); await page.waitForSelector('.as-thumb.t1');
+    const tr2 = await (await page.$('.as-track')).boundingBox();
+    await page.mouse.move(tr2.x + tr2.width * 0.9, tr2.y + tr2.height / 2); await page.mouse.down(); await page.mouse.move(tr2.x + tr2.width * 0.7, tr2.y + tr2.height / 2, { steps: 6 }); await page.mouse.up();
+    const vals = await page.$$eval('.as-thumb', e => e.map(x => Number(x.getAttribute('aria-valuenow'))));
+    ok('interval: the nearer (right) handle moved, the left stayed', vals[0] === 10 && vals[1] >= 68 && vals[1] <= 72, vals.join());
+    ok('interval: label shows the covered share', /covers \d+% of the belief/.test(await page.textContent('.livelabel')));
+    await page.focus('.as-thumb.t0'); await page.keyboard.press('ArrowRight');
+    ok('interval: arrow keys move a handle', (await page.$eval('.as-thumb.t0', e => Number(e.getAttribute('aria-valuenow')))) === 12);
+    ok('unit 1 controls: no page errors', errors.length === 0, errors.join('|'));
+    await ctx.close();
+  }
+
   // Placement: all right, then a miss on the third.
   for (const plan of ['allright', 'missthird']) {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });

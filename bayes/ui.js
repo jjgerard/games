@@ -64,7 +64,7 @@ function bagSVG(nC, nS, { seed = 1, badge = null, sealed = false, size = 160 } =
 function miniBag(badge) {
   return `<svg viewBox="0 0 40 44" aria-label="bag ${badge}"><rect class="bagbody" x="3" y="12" width="34" height="30" rx="9"/>
     <path class="bagbody" d="M12 13 Q20 3 28 13 Z"/><rect class="bagtie" x="14" y="10" width="12" height="3" rx="1.5"/>
-    <circle class="badge${badge}" cx="20" cy="28" r="9"/><text x="20" y="32" text-anchor="middle" font-size="11" font-weight="800" fill="${badge === 'B' ? '#2b2100' : '#fff'}">${badge}</text></svg>`;
+    ${badge ? `<circle class="badge${badge}" cx="20" cy="28" r="9"/><text x="20" y="32" text-anchor="middle" font-size="11" font-weight="800" fill="${badge === 'B' ? '#2b2100' : '#fff'}">${badge}</text>` : ''}</svg>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,5 +220,137 @@ function BeliefBar({ value = 0.5, label = 'How sure it is kind A', onChange = ()
     else if (e.key === 'End') { e.preventDefault(); api.set(0, true); }
   });
   api.set(v);
+  return api;
+}
+
+
+// ===========================================================================
+// Unit 1 pieces
+// ===========================================================================
+
+// Columns of chips, one column per kind of bag. With `total` the chips are a
+// fixed budget to spread (a belief); with total = null each column is its own
+// count, 0..perMax (a likelihood). Same + and - buttons as Unit 0's chips.
+function ChipsPanel({ heads, total = 10, perMax = 10, onChange = () => {} }) {
+  const chips = heads.map(() => 0);
+  const root = el('div', { class: 'chipgrid' });
+  const stacks = [], left = el('div', { class: 'chipleft' });
+  const sum = () => chips.reduce((a, b) => a + b, 0);
+  const paint = () => {
+    stacks.forEach((s, i) => { s.innerHTML = ''; for (let j = 0; j < chips[i]; j++) s.append(el('div', { class: 'chip' })); });
+    left.textContent = total == null ? '' : sum() === total ? `All ${total} chips placed` : `${total - sum()} chips left`;
+    onChange(chips);
+  };
+  const move = (i, d) => {
+    if (d > 0 && ((total != null && sum() >= total) || chips[i] >= perMax)) return;
+    if (d < 0 && chips[i] === 0) return;
+    chips[i] += d; paint();
+  };
+  heads.forEach((h, i) => {
+    const stack = el('div', { class: 'chipstack' }); stacks.push(stack);
+    root.append(el('div', { class: 'chipcol' }, h.node, el('div', { class: 'stacks' }, stack),
+      el('div', { class: 'chipbtns' },
+        el('button', { 'aria-label': `Remove one: ${h.label}`, onclick: () => move(i, -1) }, '−'),
+        el('button', { 'aria-label': `Add one: ${h.label}`, onclick: () => move(i, 1) }, '+'))));
+  });
+  const wrap = el('div', { class: 'chippanel' }, root, left);
+  paint();
+  return {
+    el: wrap, chips, sum, total,
+    set(arr) { arr.forEach((c, i) => { chips[i] = c; }); paint(); },
+    showTruth(arr) { stacks.forEach((s, i) => { const tr = el('div', { class: 'chipstack' }); for (let j = 0; j < Math.round(arr[i]); j++) tr.append(el('div', { class: 'chip truth' })); s.parentNode.append(tr); }); },
+  };
+}
+
+// A column of a kind of bag: its picture and its share of circles, plus how
+// many such bags are on the shelf (small sealed bags) when `count` is given.
+function KindHead(p, seed, count = null, compact = false) {
+  const nc = BM.circlesPerTen(p);
+  const kids = [el('div', { html: bagSVG(nc, 10 - nc, { seed, size: 64 }) }), el('div', { class: 'stage-note' }, compact ? `${pct(p)}%` : `${pct(p)}% circles`)];
+  if (count != null) kids.push(el('div', { class: 'shelfstack', 'aria-label': `${count} on the shelf` }, Array.from({ length: count }, () => el('span', { html: miniBag('') }))));
+  return { node: el('div', { class: 'kindhead' + (compact ? ' compact' : '') }, kids), label: `${pct(p)}% circles bag` };
+}
+
+// A row of bars, one per kind, scaled so the tallest fills the row.
+function BarsRow(values, { cls = '', height = 34, caption = '' } = {}) {
+  const mx = Math.max(...values, 1e-9);
+  const row = el('div', { class: 'barsrow ' + cls, style: `height:${height}px`, role: 'img', 'aria-label': caption },
+    values.map(v => el('div', { class: 'bcol' }, el('div', { class: 'bfill', style: `height:${Math.max(2, v / mx * 100)}%` }))));
+  return caption ? el('div', { class: 'barsline' }, el('span', { class: 'bcap' }, caption), row) : row;
+}
+
+// A belief about a share, drawn as a curve over 0..100%. Draws the current
+// Beta(a, b), and optionally a dashed target, a faint starting curve, a
+// shaded middle section and vertical markers. Redrawn on every update().
+function CurveView({ a = 1, b = 1, height = 112 } = {}) {
+  const W = 300, H = height, L = 10, R = 10, T = 8, B = 18;
+  const root = el('div', { class: 'curveview', role: 'img' });
+  const st = { a, b, target: null, ghost: null, shade: null, markers: [] };
+  const xOf = x => L + x * (W - L - R);
+  function path(ab, ymax, close) {
+    const n = 120; let d = '';
+    for (let i = 0; i <= n; i++) { const x = i / n, y = BM.betaPdf(Math.min(Math.max(x, 1e-4), 1 - 1e-4), ab[0], ab[1]); d += `${i ? 'L' : 'M'}${xOf(x).toFixed(1)} ${(T + (1 - Math.min(y / ymax, 1.02)) * (H - T - B)).toFixed(1)} `; }
+    return close ? d + `L${xOf(1)} ${H - B} L${xOf(0)} ${H - B} Z` : d;
+  }
+  const peak = ab => { let m = 0; for (let i = 1; i < 100; i++) m = Math.max(m, BM.betaPdf(i / 100, ab[0], ab[1])); return m; };
+  const api = {
+    el: root, state: st,
+    update(p = {}) {
+      Object.assign(st, p);
+      const curves = [[st.a, st.b], st.target, st.ghost].filter(Boolean);
+      const ymax = Math.max(...curves.map(peak)) * 1.12;
+      let s = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
+      if (st.shade) {
+        const [lo, hi] = st.shade, n = 60; let d = `M${xOf(lo)} ${H - B} `;
+        for (let i = 0; i <= n; i++) { const x = lo + (hi - lo) * i / n, y = BM.betaPdf(Math.min(Math.max(x, 1e-4), 1 - 1e-4), st.a, st.b); d += `L${xOf(x).toFixed(1)} ${(T + (1 - Math.min(y / ymax, 1.02)) * (H - T - B)).toFixed(1)} `; }
+        s += `<path d="${d}L${xOf(hi)} ${H - B} Z" class="cv-shade"/>`;
+      }
+      s += `<path d="${path([st.a, st.b], ymax, true)}" class="cv-area"/>`;
+      if (st.ghost) s += `<path d="${path(st.ghost, ymax)}" class="cv-ghost"/>`;
+      if (st.target) s += `<path d="${path(st.target, ymax)}" class="cv-target"/>`;
+      s += `<path d="${path([st.a, st.b], ymax)}" class="cv-line"/>`;
+      for (const m of st.markers) s += `<line x1="${xOf(m.x)}" x2="${xOf(m.x)}" y1="${T}" y2="${H - B}" class="cv-mark ${m.cls || ''}"/>`;
+      s += `<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" class="cv-axis"/>`;
+      for (const t of [0, .5, 1]) s += `<text x="${xOf(t)}" y="${H - 4}" text-anchor="${t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}" class="cv-tick">${t * 100}%</text>`;
+      root.innerHTML = s + '</svg>';
+      root.setAttribute('aria-label', `Belief curve: average ${Math.round(BM.betaMean(st.a, st.b) * 100)} percent circles`);
+    },
+  };
+  api.update();
+  return api;
+}
+
+// A track lined up with the curve's axis, with one or two draggable handles.
+// Values are shares 0..1. A press anywhere on the track moves the nearest handle.
+function AxisSlider({ values = [0.5], labels = ['Marker'], onChange = () => {}, minGap = 0.02, step = 0.02 }) {
+  const root = el('div', { class: 'axisslider' });
+  const track = el('div', { class: 'as-track' });
+  const vals = values.slice();
+  const thumbs = vals.map((v, i) => el('div', { class: 'as-thumb t' + i, tabindex: 0, role: 'slider', 'aria-label': labels[i], 'aria-valuemin': 0, 'aria-valuemax': 100 }));
+  track.append(...thumbs); root.append(track);
+  let touched = false, locked = false;
+  const lim = i => [i === 0 ? 0 : vals[i - 1] + minGap, i === vals.length - 1 ? 1 : vals[i + 1] - minGap];
+  const api = {
+    el: root, get: () => vals.slice(), touched: () => touched,
+    set(i, x, fromUser = false) {
+      const [lo, hi] = lim(i); vals[i] = Math.round(BM.clamp(x, lo, hi) * 100) / 100; if (fromUser) touched = true; api.paint(); onChange(vals.slice(), fromUser);
+    },
+    paint() { thumbs.forEach((t, i) => { t.style.left = (vals[i] * 100) + '%'; t.setAttribute('aria-valuenow', Math.round(vals[i] * 100)); }); },
+    lock() { locked = true; root.classList.add('locked'); thumbs.forEach(t => { t.tabIndex = -1; }); },
+    mark(x, cls = 'truth') { track.append(el('div', { class: 'as-mark ' + cls, style: `left:${x * 100}%` })); },
+  };
+  let active = 0;
+  const frac = e => { const r = track.getBoundingClientRect(); return (e.clientX - r.left) / r.width; };
+  track.addEventListener('pointerdown', e => {
+    if (locked) return; track.setPointerCapture(e.pointerId); track._drag = true;
+    const f = frac(e); active = vals.reduce((best, v, i) => Math.abs(v - f) < Math.abs(vals[best] - f) ? i : best, 0); api.set(active, f, true);
+  });
+  track.addEventListener('pointermove', e => { if (track._drag && !locked) api.set(active, frac(e), true); });
+  const end = () => { track._drag = false; }; track.addEventListener('pointerup', end); track.addEventListener('pointercancel', end);
+  thumbs.forEach((t, i) => t.addEventListener('keydown', e => {
+    if (locked) return; const d = { ArrowLeft: -step, ArrowDown: -step, ArrowRight: step, ArrowUp: step }[e.key];
+    if (d) { e.preventDefault(); api.set(i, vals[i] + d, true); }
+  }));
+  api.paint();
   return api;
 }

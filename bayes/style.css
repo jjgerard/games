@@ -235,3 +235,39 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
   .shelf.big svg { width: 30px; height: 33px; }
   .shelf.big, .shelfrow .shelf.big { width: min(100%, 175px); gap: 3px 3px; }
 }
+
+/* ---- Unit 1: shelf counts, bar rows, belief curves, axis sliders ---- */
+.kindhead { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+.kindhead svg.bag-sm { width: min(64px, 100%); }
+.shelfstack { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; min-height: 20px; align-items: flex-start; }
+.shelfstack span { display: block; line-height: 0; }
+.shelfstack svg { width: 16px; height: 18px; }
+.chippanel { display: flex; flex-direction: column; gap: 4px; }
+.barsline { display: flex; align-items: center; gap: 6px; }
+.bcap { flex: 0 0 74px; font-size: .68rem; font-weight: 800; color: var(--muted); line-height: 1.1; }
+.barsrow { display: flex; gap: 6px; align-items: flex-end; flex: 1; border-bottom: 2px solid var(--line); padding: 0 4px; }
+.bcol { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.bfill { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; }
+.barsrow.lik .bfill { background: #c27a1a; } .barsrow.post .bfill { background: var(--good); }
+.curveview svg { width: 100%; height: auto; display: block; }
+.cv-area { fill: rgba(52,48,107,.16); } .cv-line { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+.cv-ghost { fill: none; stroke: #8a847a; stroke-width: 2; stroke-dasharray: 4 3; } .cv-target { fill: none; stroke: var(--good); stroke-width: 2.5; stroke-dasharray: 6 4; }
+.cv-shade { fill: rgba(46,125,79,.35); } .cv-axis { stroke: var(--ink); stroke-width: 1.5; } .cv-tick { font-size: 9px; fill: var(--muted); font-weight: 700; }
+.cv-mark { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 3 3; } .cv-mark.truth { stroke: var(--good); stroke-dasharray: none; stroke-width: 3; }
+.axisslider { padding: 0 3.33%; touch-action: none; }
+.as-track { position: relative; height: 38px; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
+.as-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: #e0dacd; }
+.as-thumb { position: absolute; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
+.as-thumb:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.as-mark { position: absolute; top: 4px; bottom: 4px; width: 4px; margin-left: -2px; background: var(--good); border-radius: 2px; }
+.imag { opacity: .5; }
+.tray.wrap { gap: 3px; } .tray.wrap svg { width: 20px; height: 20px; }
+.bigbtn.flash.small { font-size: .95rem; padding: 9px 14px; }
+.btnrow .bigbtn.circ { background: var(--circle); } .btnrow .bigbtn.sq { background: var(--square); }
+.rowpick { display: block; width: 100%; background: none; border: 3px solid transparent; border-radius: 12px; padding: 3px; text-align: left; }
+.rowpick.on { border-color: var(--accent); background: var(--accent-tint); } .rowpick.bad { border-color: var(--danger); } .rowpick.right { border-color: var(--good); }
+.rownum { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 800; font-size: .75rem; display: flex; align-items: center; justify-content: center; }
+.livelabel { text-align: center; font-weight: 800; font-size: .95rem; }
+
+.kindhead.compact svg.bag-sm { width: min(46px, 100%); }
+.kindhead.compact .stage-note { font-size: .68rem; }
