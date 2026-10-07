@@ -145,6 +145,30 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
+  // "Which bag?": the 150% bags stay inside their columns and centred, and keep their size, on every phone shape.
+  for (const id of ['u0-two', 'u0-rare']) {
+    const bad = [];
+    for (const [w, h] of [[320, 568], [360, 640], [360, 800], [375, 667], [390, 844], [412, 915], [414, 800], [768, 1024], [1280, 800]]) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+      const page = await ctx.newPage();
+      await page.goto(URL + '?seed=4'); await page.evaluate(() => localStorage.clear()); await page.reload();
+      await page.evaluate(id => openActivity(UNITS[0].subs.find(s => s.id === id)), id); await page.waitForSelector('.bags-row.big svg');
+      const m = await page.evaluate(() => {
+        const row = document.querySelector('.bags-row.big').getBoundingClientRect();
+        const boxes = [...document.querySelectorAll('.bags-row.big .bagbox')].map(b => b.getBoundingClientRect());
+        const svgs = [...document.querySelectorAll('.bags-row.big .bagbox svg')].map(s => s.getBoundingClientRect());
+        return { w: svgs[0].width, spillL: Math.max(...svgs.map((s, i) => boxes[i].left - s.left)), spillR: Math.max(...svgs.map((s, i) => s.right - boxes[i].right)),
+          off: ((svgs[0].left + svgs[1].right) / 2) - (row.left + row.width / 2), gap: (svgs[0].left - row.left) - (row.right - svgs[1].right), sizeDiff: Math.abs(svgs[0].width - svgs[1].width),
+          shelf: document.querySelector('.shelf.big svg').getBoundingClientRect().width };
+      });
+      const old = Math.min(120, 0.17 * h), want = Math.min(box => 0, 1);
+      const fine = m.spillL <= 0.5 && m.spillR <= 0.5 && Math.abs(m.off) <= 1 && Math.abs(m.gap) <= 1 && m.sizeDiff <= 0.5 && m.w >= old * 1.2 && m.shelf >= 24 * 1.2;
+      if (!fine) bad.push(`${w}x${h} ${JSON.stringify(m)}`);
+      await ctx.close();
+    }
+    ok(`${id}: bags centred, inside their columns and at least 120% of the old size on every phone shape`, bad.length === 0, bad.join(' | '));
+  }
+
   // Belief bar: dragging toward a kind means MORE sure of that kind.
   {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });

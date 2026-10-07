@@ -75,6 +75,48 @@
     return { fromA: nA * perBagA, fromB: nB * perBagB };
   };
 
+
+  // ---- Beta distributions (Unit 1) ----------------------------------------
+  // A belief about a share, as a curve. Beta(a, b) is what you get from a
+  // flat start plus (a-1) imaginary circles and (b-1) imaginary squares.
+  function lgamma(x) {
+    const g = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+    let y = x, t = x + 5.5; t -= (x + 0.5) * Math.log(t);
+    let s = 1.000000000190015; for (const c of g) s += c / ++y;
+    return -t + Math.log(2.5066282746310005 * s / x);
+  }
+  BM.betaPdf = function (x, a, b) {
+    if (x <= 0 || x >= 1) return 0;
+    return Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + (a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x));
+  };
+  BM.betaMean = (a, b) => a / (a + b);
+  BM.betaMode = (a, b) => (a > 1 && b > 1 ? (a - 1) / (a + b - 2) : a <= 1 && b > 1 ? 0 : a > 1 && b <= 1 ? 1 : 0.5);
+  // Area under the curve from 0 to x (Simpson's rule; a, b >= 1 so the curve is smooth).
+  BM.betaCdf = function (x, a, b, steps = 400) {
+    x = BM.clamp(x, 0, 1); if (x === 0) return 0;
+    const h = x / steps; let s = BM.betaPdf(1e-12, a, b) + BM.betaPdf(x - 1e-12, a, b);
+    for (let i = 1; i < steps; i++) s += BM.betaPdf(i * h, a, b) * (i % 2 ? 4 : 2);
+    return BM.clamp(s * h / 3, 0, 1);
+  };
+  BM.betaQuantile = function (p, a, b) {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (BM.betaCdf(mid, a, b) < p) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  };
+  // The middle `mass` of the belief, with equal tails.
+  BM.betaInterval = (a, b, mass = 0.9) => [BM.betaQuantile((1 - mass) / 2, a, b), BM.betaQuantile(1 - (1 - mass) / 2, a, b)];
+  BM.betaMassBetween = (lo, hi, a, b) => BM.betaCdf(hi, a, b) - BM.betaCdf(lo, a, b);
+
+  // The three pieces for a set of candidate bags: prior (any weights), the
+  // likelihood of the shapes seen (as a share of the best, so the biggest is 1),
+  // and the posterior (prior x likelihood, rescaled to sum to 1).
+  BM.threePieces = function (ps, priorWeights, shapes) {
+    const lik = ps.map(p => shapes.reduce((acc, s) => acc * (s === 'c' ? p : 1 - p), 1));
+    const prior = priorWeights.map(w => w / priorWeights.reduce((a, b) => a + b, 0));
+    const w = prior.map((pr, i) => pr * lik[i]), t = w.reduce((a, b) => a + b, 0);
+    return { prior, lik, post: w.map(x => x / t) };
+  };
+
   if (typeof module !== 'undefined' && module.exports) module.exports = BM;
   else root.BM = BM;
 })(typeof window !== 'undefined' ? window : globalThis);

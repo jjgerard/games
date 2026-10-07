@@ -212,3 +212,26 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .shelfrow .shelf.big { margin: 0; width: min(100%, 205px); }
 .drawnbox { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .75rem; font-weight: 800; color: var(--muted); }
 .drawnbox svg { width: 40px; height: 40px; animation: pop .3s ease-out; }
+
+/* "Which bag?" and "Rare bags": the two main bags and the shelf bags are 150%
+   of their original size (120px / 24px wide), scaled down only when the screen
+   is too short to fit them without scrolling. A bag is never wider than its own
+   column (the 100% in min()), so on a narrow, tall phone it shrinks instead of
+   spilling out of its column and sitting off-centre. */
+.bags-row.big .bagbox { max-width: 190px; min-width: 0; }
+.bags-row.big .bagbox svg { width: min(180px, 25.5vh, 100%); margin: 0 auto; }
+.shelf.big { flex-wrap: wrap; width: min(100%, 210px); margin: 0 auto; gap: 4px 4px; }
+.shelf.big svg { width: 36px; height: 40px; }
+.shelfrow .shelf.big { margin: 0; width: min(100%, 205px); }
+
+/* Nothing in the stage may be squashed to make room: if it doesn't fit, the
+   layout must change. (Without this the share bar silently shrank to a sliver
+   on short screens and the no-scroll check could not see it.) */
+.stage > * { flex-shrink: 0; }
+
+/* The smallest phones: the 150% bags give way a little rather than scroll. */
+@media (max-height: 600px) {
+  .bags-row.big .bagbox svg { width: min(180px, 21.5vh, 100%); }
+  .shelf.big svg { width: 30px; height: 33px; }
+  .shelf.big, .shelfrow .shelf.big { width: min(100%, 175px); gap: 3px 3px; }
+}
