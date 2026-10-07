@@ -1,142 +1,140 @@
-# Level plan (draft 1)
+# Level plan (draft 2)
 
-Status: planning only. Draft 1 predates the Shapes build log and the Trial and Error chat; the section "Conventions inherited from Shapes and Trial and Error" was added after reading them. The level lists below have NOT yet been re-run against them or against the full stats and R chats.
+Status: planning only; nothing below is built except the early Bag of Shapes prototype (to be rebuilt).
+Draft 2 replaces draft 1 after reading the Shapes build log, the Trial and Error chat, and the five FULL chats (glmer intercept, coding/simulation, Likert mixed model, tidy R, GitHub/sapply) plus the Introduction to R slides.
 
-## Evidence base
-- `Introduction_to_R.pdf` (62 slides): the course outline and the starred slides.
-- `tidy_R_learning_progress.txt`: quiz transcript, ~18 items.
-- `likert_mixed_model_chat_progress.txt` and `glmer_intercept_chat_progress.txt`: stats chats.
-- `github_r_progress_summary.txt`: git and sapply session.
-- Caveat: this is small. Four chats and one deck, so the snags below are hypotheses to test with the placement and first-play data.
+## Evidence base and its limits
+- Introduction_to_R.pdf (62 slides); Shapes build log (dev thread only); Trial and Error chat (Levels 1-5, 27 disciplines).
+- Full chats: glmer intercept (~1,150 lines), coding/simulation (~2,450), Likert mixed model (~2,100), tidy R (retained transcript; its first part is a compacted summary), GitHub/sapply (an abridged transcript, so thin).
+- Small sample: five learning chats. Treat snags as hypotheses to test with placement and first-play data.
+- **Reliability warning.** The assistant in those chats was not always right or consistent, so none of its replies is ground truth for game content. Examples seen: in the Likert chat it first said (1 | participant) assumes responses across questions are independent (a random intercept actually induces equal correlation among all of one participant's responses), recommended (1 | participant:question), then said it cannot be estimated (that part is right: one observation per participant x question), and it called a fixed question x time x population interaction "not estimable" without showing the cause; the rank deficiency was never diagnosed in the chat. In the coding chat the model formula `(1 * ifmatch | item)` looks like a typo for `+` and was never flagged. Every answer key in the games must be checked against a stats text and, where possible, by running the code.
 
-## Common snags (cross-cutting)
-1. **What is one row? (unit/level of analysis).** group_by() read as aggregation; mutate vs summarise; filter "doesn't change rows"; wide vs long; one observation per participant × question making participant:question variance inestimable.
-2. **Relative to what? (reference point and direction).** left_join `by = c("left" = "right")`; "is the coefficient a difference from the intercept?"; what the intercept is under sum coding.
-3. **Nonlinear scale.** Mean of logits is not logit of the mean (intercept 4.38 -> .988, but cell means average ~.5).
-4. **Right concept, wrong slot in the syntax.** A bare `age_years = ...` after a pipe; `select(condition == "inf")` (a condition inside select); `mutate(x = x)`; `nrow(data)` vs `n()`; `by("a" = "b")`; missing ")". Concept scores are higher than syntax scores, so test them separately.
-5. **Verb selection among near-neighbours.** select vs rename vs recode-in-mutate; filter vs select; join vs bind_rows.
-6. **Errors are information about the data, not noise.** "Rank deficient" -> aliased/empty cells; "levels of grouping factor must be < observations" -> no replication within cell.
-7. **Fixed vs random, and what the inferential goal needs** (pairwise comparisons -> covariance structure).
-8. **Old-habit pull.** Modify-in-place, `$`, ddply. Needs translation tables, not just new vocabulary.
-9. **Fear of irreversible actions** (git: "will I change the original?"). Games should be safe sandboxes with undo and reset.
+## Common snags (re-run on full chats)
+Ranked by how often and how stubbornly they recur.
+1. **Link scale vs response scale** (3 chats). Intercept 4.38 read as a probability (.988); "I thought I could reconstruct the grand mean from the estimate"; an average of logits is not the logit of the average (her own example .2/.2/.6/.999 -> .50 vs .757); in her own simulation she added plogis(effect) to a probability; exp() vs plogis() (odds vs probability); "what do the odds mean".
+2. **What is this number relative to? (reference point and coding).** Intercept is at x = 0, which for age 800-1200 is outside the data ("plugging in gives negative numbers"); she did not know whether her factors were coded +/-1 or +/-.5 (coefficient = full difference vs half); "everything is interpreted in relation to the intercept"; sign of a coefficient vs sign of a prediction ("negative effect but still positive log-odds"); which level is the reference (is ifmatch = 1 match? add or subtract the effect?); join direction `by = c("left" = "right")`.
+3. **Test vs estimate.** "Is the estimate the difference from .5?" The test is against 0 on the link scale; the estimate is a value on the link scale. Conflated repeatedly.
+4. **What is one row? (unit/level).** group_by() as aggregation; mutate vs summarise; wide vs long; one observation per participant x question makes participant:question variance inestimable.
+5. **Concept right, syntax slot wrong** (tidy chat). Bare assignment after a pipe; condition inside select(); `mutate(x = x)`; `nrow(data)` vs `n()`; `by(` for `by = c(`; missing brackets. Concept scores run ahead of syntax scores.
+6. **Verb choice among near neighbours.** select vs rename vs recode inside mutate; filter vs select; join vs bind_rows; "rows" vs "columns" slip.
+7. **Model-formula notation.** (1 | a:b); both (1 | participant) and (1 | participant:question); "(1 | question) when question is fixed"; `*` vs `+` inside a random term; mapping a paper's variance-component line to lme4 syntax (she brought a table excerpt and asked "is that this line?").
+8. **Errors as information about the design, and failing to find the cause.** "Rank deficient" persisted after removing an empty level; "levels of grouping factor must be < observations" meant one observation per cell. She tried adding terms before inspecting the design.
+9. **Simulating from a model** (coding chat). Coefficient vs sigma ("which one is sigma?"); a regression line vs simulated data (no noise); lm for a bounded outcome; regressing in the wrong direction (wm ~ ac used to generate ac); units (days vs years); vector length mismatch and recycling (n vs participants); block-index arithmetic (1-8, 9-16, ...); rep(each=) vs rep(times=); clamping before qlogis(); loop + rbind slowness.
+10. **Risk calibration.** "Is it disastrous if I leave out the question slope?" She wants to know how bad, and for which claim (pairwise comparisons were her main concern); adjusting for many comparisons was never raised.
+11. **Old-habit pull** (tidy). Modify in place, `$`, ddply.
+12. **Fear of irreversible actions** (git: "what if I make a change by mistake?"). Needs a safe sandbox with undo.
+13. **apply/sapply and dynamic names** (paste0 + [[ ]]).
 
-Design rules that follow:
-- A "predict the row count / shape of the output" trial is the repeated core drill for tidy R.
-- Separate concept checks (multiple choice or click) from syntax checks (fill-in-blank, ordering, error-spotting).
-- Seeded simulators with a hidden ground truth so the player can poke, guess, and be told.
-- Every level: one idea, 3-5 trials, 2-4 minutes, instant feedback, name the term after they have felt it.
-- Stats stays in the stats games even when it uses R. R games teach R only.
+## How she learns (design signals)
+- **Concrete numbers beat abstract explanation.** "I don't understand this" was resolved only when she proposed her own numbers (.2, .2, .6, .999). Every scale/coding level should let the player enter or drag numbers and see the effect.
+- **Overload is real and stated:** "I don't have the spoons to understand this right now"; "don't change the variable names". Provide a low-effort path (fewer controls, keep her variable names in worked examples, one change at a time) and a "walk me through it again" replay.
+- She asks for the simplest working model first, then wants to know what it costs ("what happens if I don't?"). Offer a simple version, then a "what does this cost?" reveal with severity tags.
+- She self-corrects when the structure is shown (tidy quiz: concept right, syntax slips). Syntax drills should be scaffolded (tiles, blanks) rather than free typing.
+- She asks for precedent (a paper that uses the structure). Optional "where is this used" links, not core.
 
 ## Conventions inherited from Shapes and Trial and Error
-Source: Shapes build log (dev thread only; Levels 9-12 in detail, earlier levels only via the summary) and the Trial and Error chat (Levels 1-5, 31 sub-levels, 27 disciplines).
+**Reuse**
+- Static site, no build, no accounts, local progress, mobile-first, mascot, "?" help, About, README, versioned assets. Content in data files, engine content-free.
+- Fixed progression, locked levels show only a number, sub-levels as cards, a few reusable activity types.
+- N-in-a-row streak with hearts. User-tuned: 5 by default, 10 on key drills, 2 hearts everywhere, 3 on the hardest.
+- Wrong moves refused with an explanation of which part was wrong; hint after 3 wrong in a row.
+- Meet the idea before the name. Every question including Check fits 360x640 and 320x568 with no scrolling.
+- Typed answers: no-server matcher, shows "Read as:", "did you mean...?". Nothing leaves the device.
+- Interface accent kept far from category colours; mascot is not a category shape.
 
-**Format to reuse**
-- Static site, no build, no accounts, progress saved on the device, mobile-first. Mascot, "?" help per activity, About page, README. Engine knows nothing about content; content lives in data files. Cache-busting version on every asset.
-- Fixed progression; levels unlock in order; locked levels show only a number. Sub-levels as a card grid. A few reusable activity types, reused across levels.
-- Streak mechanic: N correct in a row, with hearts (allowed mistakes). User-tuned values: 5 in a row by default, 10 for the key drill sub-levels; 2 hearts on every sub-level, 3 on the hardest. Shapes' final levels switch to limited attempts ("do you know it, not can you work it out").
-- Wrong moves are refused and explained, saying which part was wrong. After 3 wrong in a row, a hint highlights something that fits.
-- Meet the idea before the name (Mystery Level; "keep IV/DV out of 1b so the payoff isn't given away").
-- Every question, including its Check button, must fit a 360x640 (and 320x568) screen with no scrolling. Redundant instruction lines get deleted to make it fit.
-- Typed answers use a no-server matcher against the items in the description, shows "Read as: ...", and asks "did you mean...?" instead of marking wrong. Nothing leaves the device (About promises this).
-- UI accent is kept well away from category colours so the interface never looks like it means something; the mascot is deliberately not a category shape.
+**Bite-size rule (from Shapes Level 1):** start with one thing on screen and one possible move, then the same action with more on screen; split any sub-level that introduces two actions; light the first legal move immediately; flash the control to use; order complexity single -> multiple -> both with item types mixed inside.
 
-**How the user shrinks steps (the "bite-size" rule)**
-- Shapes Level 1 opened too high, so four tutorials were added: (1) two lone triangles, one possible drag; (2) the same, already joined, one possible cut; (3-4) the same actions with more pieces on screen. Nothing on screen but the one shape, so there is no wrong move available.
-- On the first real join, the legal pair lights up immediately, not after two wrong moves. The control to press (scissors) flashes until used.
-- Order complexity within a sub-level group, mixing item types inside each: single factor, then multi factor, then both.
-- Lives vs corrections: early sub-levels give corrections, later ones a limit.
+**Left out or changed in Trial and Error:** no arithmetic; no "1 in 50" formats (plain percentages, one number vs the rule, nothing borderline); no screen-time-and-language relation; nothing misread-able as misinformation (no diet/disease, drugs, crime and demographics, policy, group differences); effects either clearly present or exactly absent; <=3 x-levels and <=2 colours in interaction graphs; titles without a single discipline's name; check names against existing resources. Undecided by the user, so do not assume: correlation vs causation; sampling; "valid but not reliable".
 
-**What the user said to leave out or change (research-methods chat)**
-- No arithmetic. "I don't want students to have to be multiplying things." Use obvious extremes (20 heads in a row, ten 6s) and map them to the null.
-- No "1 in 50" style numbers (bigger = rarer is confusing). Plain percentages, one number compared to the rule; no borderline values (nothing between 4% and 6%).
-- No screen-time-and-language relation, and nothing implying a connection between them. The phone-use example was left out of cross-sectional/longitudinal.
-- Avoid anything that could be misread and cause misinformation: no diet/disease, drugs, crime and demographics, policy, or group differences between kinds of people. Use intuitive examples a second-year in that discipline would know; write limits into the sentence ("up to its elastic limit").
-- Effects in generated graphs are either clearly present or exactly absent. At most 3 x-levels and 2 colours in the interaction graphs; every bar clearly visible.
-- Titles must not carry one discipline's name once the game spans many; check names against existing resources and aim for a double entendre.
-- Not decided by the user (do not assume): correlation vs causation; sampling and test-vs-filler items; "valid but not reliable" items.
-
-**Implications for these games**
-- Bayes Unit 0 must start with a one-possible-move tutorial and contain no arithmetic. Posteriors are compared visually or by sliders; at most "add the counts". This conflicts with parts of the book (ch. 2 onward), so book-level units need visual replacements for any multiplication.
-- Trial and Error Level 5 already teaches "how likely is this data if H0 were true" with no sums. Bayes Unit 0 should start where that stops: two hypotheses (fair coin vs two-headed coin), same evidence, which is likelier? Then flip the condition.
-- Mixed-models and Bayes graph items can reuse the generator idea: effects clearly present or exactly absent, with a hidden seeded truth.
-- R on a phone: typing code is the weak point. Plan for tap-to-assemble code tiles, fill-in-the-blank and error-spotting as the default, and a typed-answer matcher with "Read as:" feedback only where typing is needed.
-- Misconceptions are checked by simulating students (Shapes' belief-model simulation found which levels catch which errors). Do the same here with the snags from the chats once the full chats are in.
-- Reuse the shell from the public `jjgerard/research-methods` repo rather than rebuilding it (needs the repo attached to this session).
+**Implications**
+- No arithmetic conflicts with the logit levels. Replace calculation with mapping on a number line: drag a probability and watch log-odds and odds move; drag bars on a logit axis and watch the mean marker (the .2/.2/.6/.999 effect) without computing.
+- Trial and Error Level 5 already teaches "how likely is this data if H0 were true" without sums. Bayes Unit 0 starts there: two hypotheses (fair coin vs two-headed coin), same evidence, which is likelier?
+- Hidden seeded truth with clearly-present/absent effects is the shared generator idea across Bayes, scales and mixed models. A "Simulate it, then refit and recover" activity answers snag 9.
+- R on a phone: typing code is the weak point. Default to tap-to-assemble tiles, fill-in-the-blank, error-spotting, and "predict the output/row count"; typed matcher only where needed.
+- Check coverage by simulating learners (Shapes' belief-model simulation) with these snags as the belief errors.
+- Reuse the shell from the public jjgerard/research-methods repo (needs it attached to this session).
 
 ## Licence for Bayesian source material (Nicenboim, Schad, Vasishth)
-- Website states no licence and no copyright holder. It says the book, data and code are free online and the Rmd sources are released.
-- GitHub repo `bnicenboim/bayescogsci` LICENSE: MIT, "Copyright (c) 2025 Bruno Nicenboim". MIT requires keeping the copyright and permission notice in copies or substantial portions.
-- Unverified: whether the printed book's publisher holds separate rights in the prose or figures, and whether MIT is meant to cover the prose rather than just the code.
-- Plan: write original items and examples; use the book as the syllabus and link to the chapter at each level; do not copy text, figures or exercises verbatim. If any of the book's code or data is reused, include the MIT notice. If you want verbatim reuse, ask the authors.
+- The book website states no licence or copyright holder. The GitHub repo bnicenboim/bayescogsci has an MIT LICENSE, "Copyright (c) 2025 Bruno Nicenboim" (keep the notice if code is reused).
+- Unverified: whether the print publisher holds separate rights in prose or figures, and whether MIT is meant to cover prose.
+- Plan: write original items; use the book as a syllabus and link each level to its chapter; no verbatim text, figures or exercises without asking the authors.
 
-## Game A: Bayesian statistics ("Bag of Shapes" series)
-Placement test (about 10 items, adaptive, no code): fractions and proportions; reading a 2x2 table; P(A|B) vs P(B|A) (links to the p(data|H0) slide); base rate with natural frequencies; two-bag Bayes; prior x likelihood intuition; beta-binomial; credible vs confidence interval; "why MCMC". Result places into a unit; the default start for everyone is Unit 0.
+## Game A: Bayesian statistics
+Placement test (about 10 items, no code, no arithmetic): proportions and a 2x2 table; P(A|B) vs P(B|A); base rate with natural frequencies; two-bag and fair-vs-two-headed-coin; prior x likelihood intuition; beta-binomial as pseudo-counts; credible vs confidence interval; "coefficient vs sigma" (simulation); why MCMC. Everyone defaults to Unit 0 below the book.
 
-- **Unit 0, before the book (shapes and counts)**
-  - 0.1 Tally draws; proportions.
-  - 0.2 Few vs many draws: variability.
-  - 0.3 Conditional counts ("given it's a circle...").
-  - 0.4 Flip the condition: P(A|B) is not P(B|A).
-  - 0.5 Two bags, one draw: which bag?
-  - 0.6 Several draws accumulate.
-  - 0.7 Unequal bags: base rate (prior).
-  - 0.8 Many possible bags (grid of hypotheses): prior x likelihood, normalise.
-- **Unit 1, book ch. 1-2:** Bayes' rule written out; probability mass and density; binomial likelihood; Beta prior; beta-binomial posterior; prior as pseudo-counts; credible interval. (The current Bag of Shapes is about 1.5-1.7.)
-- **Unit 2, ch. 3:** grid approximation; sampling from the posterior; prior and posterior predictive checks; why MCMC.
-- **Unit 3, ch. 4:** intercept-only model; slope; priors on slopes; reading brms-style output; plotting the posterior.
-- **Unit 4, ch. 5:** hierarchical models and partial pooling (shared with the mixed-models game).
-- **Unit 5, ch. 6-7:** contrast coding (shared with the mixed-models game).
+- **Unit 0 (before the book):** one-possible-move tutorial; tally draws; few vs many draws; conditional counts; flip the condition (P(A|B) vs P(B|A)); two bags, one draw; several draws accumulate; unequal bags (base rate); many possible bags (grid).
+- **Unit 1 (ch. 1-2):** Bayes' rule; mass and density; binomial likelihood; Beta prior as pseudo-counts; posterior as compromise; credible interval. (Current prototype is about here.)
+- **Unit 2 (ch. 3):** grid approximation; sampling from the posterior; **generate data from parameters** (prior and posterior predictive) with the "line vs simulated data" and "coefficient vs sigma" ideas; why MCMC.
+- **Unit 3 (ch. 4):** intercept-only model; slope; priors on slopes; reading brms-style output; plotting the posterior.
+- **Unit 4 (ch. 5):** hierarchical models and partial pooling (shared with mixed models).
+- **Unit 5 (ch. 6-7):** contrast coding (shared with Game C level 5).
 - **Deferred:** Stan, model comparison and Bayes factors, cross-validation, cognitive models, meta-analysis.
-- **Possibly missing vs typical tutorials:** MCMC diagnostics (R-hat, traces, divergences), prior sensitivity, reporting a Bayesian analysis, Bayes factor cautions.
+- **Typically included, not yet planned:** MCMC diagnostics (R-hat, traces, divergences), prior sensitivity, reporting.
 
 ## Game B1: R part 1, base R
-Follows the slide order.
-1. **Console:** calculator; script vs console and running a line; comments.
-2. **Values:** numbers, characters (quotes), TRUE/FALSE; ==, !=, <, >; & and |.
-3. **Variables:** assign; print vs assign (starred slide); overwrite; naming; arithmetic.
-4. **Functions:** operator vs function; arguments, order, named; assigning output.
-5. **Vectors:** c(); 1:10 and 10:1; vector arithmetic.
-6. **Indexing:** [4]; [] vs (); by condition; | vs &; overwrite selected values.
-7. **Tables:** [row, col]; cbind/rbind; as.data.frame; colnames; `$` vs [, 1].
-8. **Files and packages:** working directory; install once vs library each session; read.csv; View; head/str/summary; subset rows by condition; nrow/length; NA basics.
-9. **Bridge (optional):** sapply, paste0, [[ ]], for loop basics, writing a function.
-- **Possibly missing vs typical tutorials:** reading error messages, `?help`, NA handling, factor vs character, str()/head(), seeds and random numbers, lists, if/else, loops, writing functions, RStudio projects and file paths.
-- **Note:** slides teach `=` for assignment; the tidy chat answers use `<-`. Pick one and accept both.
+Follows the slide order; the starred slides are the key drills.
+1. Console: calculator; script vs console and running a line; comments.
+2. Values: numbers, characters (quotes), TRUE/FALSE; comparisons; & and |.
+3. Variables: assign; print vs assign; overwrite; naming; arithmetic.
+4. Functions: operator vs function; arguments, order, named; assigning output.
+5. Vectors: c(); 1:10 and 10:1; vector arithmetic.
+6. Indexing: [4]; [] vs (); by condition; | vs &; overwrite selected values.
+7. Tables: [row, col]; cbind/rbind; as.data.frame; colnames; `$` vs [, 1].
+8. Files and packages: working directory; install once vs library each session; read.csv; View; head/str/summary; subset rows by condition; nrow/length; NA basics.
+9. **Vectors in practice (new, from the simulation chat):** rep(each=) vs rep(times=); vector recycling and length mismatches; block index arithmetic; deterministic vs random (runif, rnorm, rbinom) and set.seed; units (days vs years); loop vs vectorised and why rbind in a loop is slow.
+10. **Apply family (new, from the GitHub chat):** sapply vs apply; paste0 and [[ ]] to build names; nested sapply.
+11. Optional: if/else, writing a function.
+- Note: slides use `=` for assignment; tidy answers use `<-`. Pick one and accept both.
+- Typically included, not yet planned: reading error messages, ?help, factor vs character, lists, RStudio projects and file paths.
+- Statistics tests from the slides (binom.test, t.test, McNemar) move to the stats games; R part 1 only teaches "run a function and read its output".
 
 ## Game B2: R part 2, tidy R
-0. **What is one row?** observations vs variables; tidy data.
+0. What is one row? (observations vs variables; tidy data).
 1. The pipe as "and then".
-2. filter (rows): &, |, between(), !is.na.
+2. filter: &, |, between(), !is.na.
 3. select vs rename; the "condition inside select" trap.
-4. mutate: new column; if_else/case_when/recode (changing values, not names); the "bare assignment after a pipe" trap.
-5. group_by + summarise: group_by alone collapses nothing; n(); na.rm; naming.
-6. mutate vs summarise in a group: row-count prediction drill.
+4. mutate: new column; if_else/case_when/recode (values, not names); "every step after a pipe is a function call".
+5. group_by + summarise: group_by alone collapses nothing; n(); na.rm.
+6. mutate vs summarise within a group: **predict-the-row-count drill**.
 7. arrange, count, distinct.
-8. Joins: left_join by=; by = c("left" = "right"); anti_join to find unmatched; bind_rows vs join.
+8. Joins: left_join by=; by = c("left" = "right"); anti_join; bind_rows vs join.
 9. Reshape: pivot_longer / pivot_wider (replaces melt/dcast).
-10. ungroup and whole pipelines: read aloud and write from a description; base -> tidy translation table (subset->filter, ddply->group_by+summarise, $->mutate, match->join, melt->pivot_longer).
+10. ungroup and whole pipelines: read aloud ("what does one row represent at the end?"); write from a description; base -> tidy translation table (subset->filter, ddply->group_by+summarise, $->mutate, match->join, melt->pivot_longer).
 11. ggplot2: layers with +, aes, geoms, summary data with error bars, facets.
-12. Optional: across(), purrr, lists. Not forcing loops into purrr.
-- **Possibly missing vs typical tutorials:** readr/tibbles, native pipe `|>`, stringr/forcats/lubridate, missing-value handling, other join types, reshape edge cases, tidy-data checks.
+12. Optional: across(), purrr, lists.
+- Typically included, not yet planned: readr/tibbles, `|>`, stringr/forcats/lubridate, other join types, tidy-data checks.
 
-## Game C: Mixed-effects models (stats; R used only for the models)
-Short placement: within vs between, fixed vs random, independence.
-1. Why not just average? non-independence; pseudo-replication.
-2. Design table: within vs between; crossed vs nested; count observations per cell.
-3. Random intercepts: reading (1 | participant); shrinkage and partial pooling (shared with Bayes Unit 4).
-4. Random slopes: what is estimable given the replication you have; "levels must be < observations".
-5. Fixed vs random: why one factor cannot be both here.
-6. Coding: treatment vs sum; what the intercept is; coefficient = difference with +/-.5; interaction = difference of differences; 3-way = difference of those.
-7. Link functions: log-odds; plogis; intercept is not the mean probability (generate variants of the .2/.2/.6/.999 example).
-8. Interactions: why main effects mislead under a 3-way; simple effects; emmeans pairwise; what pairwise comparisons depend on.
-9. Debug the model: rank deficiency, singular fit, non-convergence, grouping-factor error -> what each says about the data.
-10. Reporting: put the intercept in the table without over-reading it.
-- **Possibly missing vs typical tutorials:** model comparison (LRT/AIC), residual and assumption checks, p-values in lmer, crossed subjects x items, centring/scaling, ICC, power by simulation, ordinal models for Likert data (the chat used lmer on ratings).
+## Game C: Regression, scales and mixed-effects models (stats; R only as the tool)
+Proposed as two parts so the most frequent snag (scales) is fixed before random effects.
+Short placement: link vs response scale; within vs between; fixed vs random.
+
+**Part 1: Regression and scales**
+1. Prediction from a line: intercept + slope x; units; why the intercept at x = 0 can be outside the data; centring.
+2. Bounded outcomes: why a straight line escapes 0-1.
+3. Three scales: probability, odds, log-odds. Drag one, watch the other two (no arithmetic). exp() vs plogis() as "which scale am I on?".
+4. Averaging on the wrong scale: drag bars on the logit axis, watch the mean marker vs the mean probability (.2/.2/.6/.999 and generated variants). Ceiling cells have enormous leverage.
+5. Reading a logistic table: test is against 0 on the link scale; estimate is not "difference from .5"; sign of coefficient vs sign of predicted log-odds; reference level (which level is 1?).
+6. Coding: treatment vs sum; +/-1 vs +/-.5; "which coding did I use?" identified from the table; what the intercept is under each; coefficient = difference or half-difference.
+7. Interactions: difference of differences; three-way = difference of those; main effects under an interaction; simple effects.
+
+**Part 2: Mixed-effects models**
+1. Why not just average? Non-independence; pseudo-replication.
+2. Design table: within vs between; crossed vs nested; count observations per cell (table()).
+3. Random intercepts: reading (1 | participant); what it implies (equal correlation among one person's responses); shrinkage.
+4. Random-effects notation: (1 | a), (1 | a:b), (1 + x | a); `+` vs `*` inside a random term; both terms together; map a variance-component description to a formula.
+5. Estimable or not? Replication per cell; "levels must be < observations" as a design fact; one observation per participant x question.
+6. Fixed vs random: sampled levels vs the levels you care about; why using one factor as both is rarely sensible.
+7. What does it cost? Simple vs maximal structure with severity tags ("how bad is it, and for which claim?").
+8. Pairwise comparisons: what emmeans depends on; adjusting for many comparisons.
+9. Debug the model: rank deficiency (inspect which columns drop: empty or aliased cells), singular fit, non-convergence, grouping-factor error. Rule: inspect the design before adding terms.
+10. **Simulate it, then refit and recover:** set the true intercept, effects, subject SD; simulate on the logit scale; check the sigma/no-sigma difference for lm vs glmer; see whether the model recovers the truth.
+11. Reporting: report the intercept without over-reading it.
+- Typically included, not yet planned: model comparison (LRT/AIC), residual and assumption checks, p-values in lmer, crossed subjects x items, power by simulation, ordinal models for Likert data (the chat used lmer on ratings), multiple-comparison adjustment details.
 
 ## Deferred
-Similarity-based interference in psycholinguistics (later). Git/GitHub (optional small game; decide later).
+Similarity-based interference in psycholinguistics. Git/GitHub (optional small safe-sandbox game).
 
 ## Open items
-- Shapes and research-methods games, plus the "don't include" list from the research-methods chat: not yet seen.
-- Real R in the browser (WebR) vs simulated checking for the R games.
-- Where the slides' Statistics section goes: proposed to the stats games, with R part 1 only covering running a function and reading its output.
+- Whether Game C stays one game in two parts or becomes two games.
+- Real R in the browser (WebR) vs simulated checking.
+- Whether to attach jjgerard/research-methods (and shapes) to reuse the shell.
