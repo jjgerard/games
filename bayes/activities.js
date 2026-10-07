@@ -127,16 +127,21 @@ function buildHowMany(ctx) {
 // ---------------------------------------------------------------------------
 // 0.3 / 0.4 Inside a group (conditional shares), and flipping the condition
 // ---------------------------------------------------------------------------
-// 20 shapes, each a circle or a square and either dotted or plain.
+// 12 shapes (a 4x3 grid), each a circle or a square and either dotted or
+// plain. Few enough to eyeball, and every cell is a whole number of twelfths
+// for when joint probability arrives. Every group you could pick from has at
+// least three shapes, so a share is never a trivial one-of-one.
+const GRID_SIZE = 12;
 function makeCondGrid(rng, needFlip) {
-  for (let tries = 0; tries < 500; tries++) {
-    const cd = BM.int(rng, 1, 9), cp = BM.int(rng, 1, 9), sd = BM.int(rng, 1, 9);
-    const sp = 20 - cd - cp - sd; if (sp < 1 || sp > 9) continue;
+  for (let tries = 0; tries < 2000; tries++) {
+    const cd = BM.int(rng, 1, 6), cp = BM.int(rng, 1, 6), sd = BM.int(rng, 1, 6);
+    const sp = GRID_SIZE - cd - cp - sd; if (sp < 1 || sp > 6) continue;
+    if (Math.min(cd + cp, sd + sp, cd + sd, cp + sp) < 3) continue;
     const pDotGivenC = cd / (cd + cp), pCGivenDot = cd / (cd + sd);
     if (needFlip && Math.abs(pDotGivenC - pCGivenDot) < 0.25) continue;
     return { cd, cp, sd, sp };
   }
-  return { cd: 6, cp: 2, sd: 4, sp: 8 };
+  return { cd: 4, cp: 2, sd: 2, sp: 4 };
 }
 const GROUPS = {
   c: { label: 'circles', test: s => s.t === 'c' },
@@ -159,7 +164,7 @@ function buildInside(ctx, flip) {
   const txt = k => k === 'd' ? 'dotted' : k === 'c' ? 'circles' : 'squares';
   const nm = k => k === 'd' ? 'a dotted shape' : k === 'c' ? 'a circle' : 'a square';
   ctx.setPrompt(`Pick one at random from the <b>${txt(given)}</b>. How likely is it to be <b>${nm(want)}</b>? First tap the group you are looking inside, then slide.`);
-  const grid = el('div', { class: 'fgrid', role: 'img', 'aria-label': '20 shapes: circles and squares, some dotted' });
+  const grid = el('div', { class: 'fgrid', role: 'img', 'aria-label': '12 shapes: circles and squares, some dotted' });
   const nodes = items.map(s => { const n = shapeNode(s.t, { size: 40, dot: s.d }); grid.append(n); return n; });
   let lens = null;
   const lensBtns = {};

@@ -132,7 +132,7 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .fd.dim { opacity: .18; }
 
 /* ---- focus grid (conditional) ---- */
-.fgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: min(250px, 38vh); margin: 0 auto; }
+.fgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: min(230px, 36vh); margin: 0 auto; }
 .fgrid svg { width: 100%; height: auto; transition: opacity .2s, transform .2s; }
 .fgrid svg.dim { opacity: .15; }
 .lens { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
