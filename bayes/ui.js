@@ -231,9 +231,9 @@ function BeliefBar({ value = 0.5, label = 'How sure it is kind A', onChange = ()
 // Columns of chips, one column per kind of bag. With `total` the chips are a
 // fixed budget to spread (a belief); with total = null each column is its own
 // count, 0..perMax (a likelihood). Same + and - buttons as Unit 0's chips.
-function ChipsPanel({ heads, total = 10, perMax = 10, onChange = () => {} }) {
+function ChipsPanel({ heads, total = 10, perMax = 10, grid = false, onChange = () => {} }) {
   const chips = heads.map(() => 0);
-  const root = el('div', { class: 'chipgrid' });
+  const root = el('div', { class: 'chipgrid' + (grid ? ' grid2' : '') });
   const stacks = [], left = el('div', { class: 'chipleft' });
   const sum = () => chips.reduce((a, b) => a + b, 0);
   const paint = () => {
@@ -248,17 +248,18 @@ function ChipsPanel({ heads, total = 10, perMax = 10, onChange = () => {} }) {
   };
   heads.forEach((h, i) => {
     const stack = el('div', { class: 'chipstack' }); stacks.push(stack);
-    root.append(el('div', { class: 'chipcol' }, h.node, el('div', { class: 'stacks' }, stack),
-      el('div', { class: 'chipbtns' },
-        el('button', { 'aria-label': `Remove one: ${h.label}`, onclick: () => move(i, -1) }, '−'),
-        el('button', { 'aria-label': `Add one: ${h.label}`, onclick: () => move(i, 1) }, '+'))));
+    const minus = el('button', { 'aria-label': `Remove one: ${h.label}`, onclick: () => move(i, -1) }, '−');
+    const plus = el('button', { 'aria-label': `Add one: ${h.label}`, onclick: () => move(i, 1) }, '+');
+    if (grid) root.append(el('div', { class: 'chipcell' }, h.node, el('div', { class: 'cellctl' }, el('div', { class: 'stacks' }, stack), el('div', { class: 'chipbtns' }, plus, minus))));
+    else root.append(el('div', { class: 'chipcol' }, h.node, el('div', { class: 'stacks' }, stack), el('div', { class: 'chipbtns' }, minus, plus)));
   });
   const wrap = el('div', { class: 'chippanel' }, root, left);
   paint();
   return {
     el: wrap, chips, sum, total,
     set(arr) { arr.forEach((c, i) => { chips[i] = c; }); paint(); },
-    showTruth(arr) { stacks.forEach((s, i) => { const tr = el('div', { class: 'chipstack' }); for (let j = 0; j < Math.round(arr[i]); j++) tr.append(el('div', { class: 'chip truth' })); s.parentNode.append(tr); }); },
+    lock() { root.classList.add('locked'); },
+    showTruth(arr) { stacks.forEach((s, i) => { const tr = el('div', { class: 'chipstack truthstack' }); for (let j = 0; j < Math.round(arr[i]); j++) tr.append(el('div', { class: 'chip truth' })); s.parentNode.append(tr); }); },
   };
 }
 

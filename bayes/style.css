@@ -271,3 +271,18 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 
 .kindhead.compact svg.bag-sm { width: min(46px, 100%); }
 .kindhead.compact .stage-note { font-size: .68rem; }
+
+/* "Many bags": four bags in a 2x2 grid, each with a big picture and big buttons. */
+.chipgrid.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; align-items: stretch; }
+.chipcell { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px; min-width: 0; }
+.chipcell .kindhead { width: auto; flex: 0 0 auto; }
+.chipcell .kindhead svg.bag-sm { width: min(96px, 15vh, calc(50vw - 93px)); } /* leave 56px for the chips and buttons beside it */
+.chipcell .kindhead .stage-note { font-size: .68rem; line-height: 1.1; text-align: center; }
+.cellctl { flex: 1; min-width: 56px; display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.chipgrid.grid2 .stacks { justify-content: center; align-items: flex-start; min-height: 26px; flex-wrap: wrap; gap: 3px; }
+.chipgrid.grid2 .chipstack { flex-direction: row; flex-wrap: wrap; justify-content: center; min-height: 0; gap: 2px; max-width: 56px; }
+.chipgrid.grid2 .chip { width: 9px; height: 9px; border-radius: 50%; }
+.chipgrid.grid2 .chipbtns { flex-direction: column; gap: 4px; }
+.chipgrid.grid2 .chipbtns button { width: 100%; height: 34px; font-size: 1.3rem; line-height: 1; }
+@media (max-height: 600px) { .chipgrid.grid2 .chipbtns button { height: 30px; } .chipgrid.grid2 .stacks { min-height: 22px; } .chipcell .kindhead svg.bag-sm { width: min(96px, 14vh, calc(50vw - 93px)); } .chipgrid.grid2 { gap: 6px 8px; } .chipcell { padding: 4px 6px; } }
+.chipgrid.grid2.locked .chipbtns { display: none; }

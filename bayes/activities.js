@@ -345,48 +345,25 @@ function buildSeveral(ctx) {
 // ---------------------------------------------------------------------------
 function buildChips(ctx) {
   const rng = ctx.rng;
-  const ps = BM.pick(rng, [[0.2, 0.4, 0.6, 0.8], [0.1, 0.3, 0.5, 0.7, 0.9]]);
+  const ps = [0.2, 0.4, 0.6, 0.8]; // four kinds of bag, in a 2x2 grid with room for big pictures and buttons
   const N = BM.int(rng, 1, 3), trueP = BM.pick(rng, ps);
   const draws = Array.from({ length: N }, () => BM.drawShape(rng, trueP));
   const k = draws.filter(d => d === 'c').length;
   const post = BM.gridPosterior(ps, k, N).map(x => x * 10);
-  ctx.setPrompt(`These shapes were drawn from one bag. Spread your <b>10 chips</b> over the kinds of bag that could have made them.`);
+  ctx.setPrompt('Spread your <b>10 chips</b> over the kinds of bag that could have made these shapes.');
   const tray = Tray(); draws.forEach(d => tray.add(d));
-  const chips = ps.map(() => 0);
-  const left = el('div', { class: 'chipleft' });
-  const grid = el('div', { class: 'chipgrid' });
-  const stacks = [], counts = [];
-  ps.forEach((p, i) => {
-    const stack = el('div', { class: 'chipstack' });
-    stacks.push(stack);
-    const nc = BM.circlesPerTen(p);
-    const col = el('div', { class: 'chipcol' },
-      el('div', { html: bagSVG(nc, 10 - nc, { seed: 20 + i, size: 64 }) }),
-      el('div', { class: 'stage-note' }, `${pct(p)}% circles`),
-      el('div', { class: 'stacks' }, stack),
-      el('div', { class: 'chipbtns' },
-        el('button', { 'aria-label': `Remove a chip from the ${pct(p)}% bag`, onclick: () => move(i, -1) }, '−'),
-        el('button', { 'aria-label': `Add a chip to the ${pct(p)}% bag`, onclick: () => move(i, 1) }, '+')));
-    grid.append(col);
-  });
-  const total = () => chips.reduce((a, b) => a + b, 0);
-  function paint() {
-    stacks.forEach((s, i) => { s.innerHTML = ''; for (let j = 0; j < chips[i]; j++) s.append(el('div', { class: 'chip' })); });
-    left.textContent = total() === 10 ? 'All 10 chips placed' : `${10 - total()} chips left`;
-    ctx.setReady(total() === 10);
-  }
-  function move(i, d) { if (d > 0 && total() >= 10) return; if (d < 0 && chips[i] === 0) return; chips[i] += d; paint(); }
-  ctx.stage.append(el('div', { class: 'bigshape' }, 'Drawn:', tray.el), grid, left); paint();
-  const dev = () => chips.reduce((a, c, i) => a + Math.abs(c - post[i]), 0);
+  const panel = ChipsPanel({ grid: true, total: 10, heads: ps.map((p, i) => KindHead(p, 20 + i)), onChange: c => ctx.setReady(sumOf(c) === 10) });
+  ctx.stage.append(el('div', { class: 'bigshape' }, 'Drawn:', tray.el), panel.el);
+  const dev = () => panel.chips.reduce((a, c, i) => a + Math.abs(c - post[i]), 0);
   return {
     check() {
       const ok = dev() <= 3 + 1e-9;
-      stacks.forEach((s, i) => { const t = Math.round(post[i]); const tr = el('div', { class: 'chipstack' }); for (let j = 0; j < t; j++) tr.append(el('div', { class: 'chip truth' })); s.parentNode.append(tr); });
+      panel.lock(); panel.showTruth(post);
       const best = ps[post.indexOf(Math.max(...post))];
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}You saw ${k} circle${k === 1 ? '' : 's'} in ${N} draw${N === 1 ? '' : 's'}. The green chips show where belief belongs: most on the ${pct(best)}% bag, and some on every kind that could still have made this.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}You saw ${k} circle${k === 1 ? '' : 's'} in ${N} draw${N === 1 ? '' : 's'}. The green dots show where belief belongs: most on the ${pct(best)}% bag, and some on every kind that could still have made this.` };
     },
-    solve() { chips.fill(0); const r = post.map(Math.round); let diff = 10 - r.reduce((a, b) => a + b, 0); r[r.indexOf(Math.max(...r))] += diff; r.forEach((c, i) => chips[i] = Math.max(0, c)); paint(); },
-    solveWrong() { chips.fill(0); const worst = post.indexOf(Math.min(...post)); chips[worst] = 10; paint(); },
+    solve() { const r = post.map(Math.round); const diff = 10 - sumOf(r); r[r.indexOf(Math.max(...r))] += diff; panel.set(r.map(c => Math.max(0, c))); },
+    solveWrong() { const worst = post.indexOf(Math.min(...post)); panel.set(post.map((_, i) => i === worst ? 10 : 0)); },
   };
 }
 
