@@ -31,3 +31,6 @@ h2{font-size:1.35rem;margin:1.6em 0 .5em}
 .points b{display:block}
 footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted)}
 .prose p,.prose li{max-width:36em}
+.game{display:flex;align-items:center;gap:14px}
+.game img{flex:none;width:64px;height:54px;object-fit:contain}
+.game p{margin:.2em 0 .3em}
