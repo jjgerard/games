@@ -9,14 +9,14 @@ Every sub-level is something you move or draw, not a list of options. Nothing as
 
 | # | Sub-level | You... |
 |---|---|---|
-| 0 | First draw | tap Draw (the only possible move) |
+| 0 | First draw | drag the flashing tile out of the bag (the only possible move) |
 | 1 | First slide | drag a divider along a bar (the only possible move) |
 | 2 | Share of circles | slide a divider to a share, from a visible bag or a tally |
 | 3 | How many draws? | choose a sample size, run 20 people, see how they scatter |
 | 4 | Just the circles | tap the group you are inside, then slide to a share |
 | 5 | Flip it | same, either way round; shows the two directions differ |
 | 6 | Which bag? | one draw, two kinds of bag; reveal is ten imagined draws per bag |
-| 7 | More draws | update your belief draw by draw |
+| 7 | More draws | drag shapes out of a closed bag and update your belief draw by draw |
 | 8 | Rare bags | a scarce kind of bag; base rate vs the obvious guess |
 | 9 | Many bags | spread ten chips over several possible bags |
 

@@ -160,3 +160,52 @@ function FreqGrid(pA, pB, nA, nB, shape) {
   }
   return root;
 }
+
+// ---------------------------------------------------------------------------
+// A bag you draw from by DRAGGING a shape out of it. The "?" tile at the
+// mouth of the bag is the shape you are about to pull; it turns into the
+// real shape only once it is out, so nothing is given away early. A plain tap
+// does not draw (it nudges the tile and says to drag), but Enter or Space on
+// the focused tile does, so keyboard and screen-reader users can play.
+// `flash` makes the tile call for the drag, like the flashing scissors in
+// Shapes, until the first time it is picked up.
+// ---------------------------------------------------------------------------
+function BagDrawer({ nC = 5, nS = 5, seed = 1, size = 'lg', sealed = true, onDraw, flash = false, label = 'Draw a shape' }) {
+  const root = el('div', { class: 'bagdraw' });
+  root.innerHTML = bagSVG(nC, nS, { seed, size: size === 'lg' ? 190 : size === 'md' ? 120 : 70, sealed });
+  const peek = el('button', { class: 'peek' + (flash ? ' flash' : ''), 'aria-label': `${label}: drag this out of the bag, or press Enter` }, '?');
+  const hint = el('div', { class: 'draghint' });
+  root.append(peek, hint);
+  let disabled = false, ghost = null, start = null, moved = false;
+  const api = {
+    el: root, peek,
+    setDisabled(b) { disabled = b; peek.disabled = b; root.classList.toggle('spent', b); },
+    stopFlash() { peek.classList.remove('flash'); },
+    drawNow() { if (!disabled) { api.stopFlash(); onDraw(); } },
+  };
+  const inside = (x, y) => { const r = root.querySelector('svg').getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+  peek.addEventListener('pointerdown', e => {
+    if (disabled) return;
+    peek.setPointerCapture(e.pointerId); start = { x: e.clientX, y: e.clientY }; moved = false; api.stopFlash();
+    ghost = el('div', { class: 'drag-ghost' }, '?'); document.body.append(ghost);
+    ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; peek.classList.add('lifted');
+  });
+  peek.addEventListener('pointermove', e => {
+    if (!ghost) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) moved = true;
+    ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px';
+  });
+  const finish = (e, cancelled) => {
+    if (!ghost) return;
+    const x = e.clientX, y = e.clientY;
+    ghost.remove(); ghost = null; peek.classList.remove('lifted');
+    if (cancelled) return;
+    if (moved && !inside(x, y)) onDraw();
+    else if (moved) { hint.textContent = 'Let go outside the bag'; setTimeout(() => { hint.textContent = ''; }, 1600); }
+    else { hint.textContent = 'Drag the shape out of the bag'; peek.classList.remove('nudge'); void peek.offsetWidth; peek.classList.add('nudge'); setTimeout(() => { hint.textContent = ''; }, 1600); }
+  };
+  peek.addEventListener('pointerup', e => finish(e, false));
+  peek.addEventListener('pointercancel', e => finish(e, true));
+  peek.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !disabled) { e.preventDefault(); api.drawNow(); } });
+  return api;
+}

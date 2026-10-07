@@ -96,6 +96,57 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
+  // Drawing is a drag out of the bag, and the tile flashes until picked up.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(URL + '?seed=3'); await page.evaluate(() => localStorage.clear()); await page.reload();
+    await page.evaluate(() => openActivity(UNITS[0].subs[0]));
+    await page.waitForSelector('.peek');
+    // flash: sample the real background across two cycles, as for the scissors
+    const samples = []; for (let i = 0; i < 44; i++) { samples.push(await page.evaluate(() => getComputedStyle(document.querySelector('.peek')).backgroundColor)); await page.waitForTimeout(50); }
+    const parse = c => c.match(/\d+/g).map(Number); const redish = c => { const [r, g] = parse(c); return r > 170 && g < 110; }; const grey = c => { const [r, g] = parse(c); return r > 190 && g > 180; };
+    const redShare = samples.filter(redish).length / samples.length, greyShare = samples.filter(grey).length / samples.length;
+    ok('tile flashes red for over a quarter of the time', redShare > 0.25, String(redShare));
+    ok('tile rests grey for over a quarter of the time', greyShare > 0.25, String(greyShare));
+    const box = async sel => (await page.$(sel)).boundingBox();
+    const peek = await box('.peek'), bag = await box('.bagdraw svg');
+    // a plain tap does not draw
+    await page.mouse.click(peek.x + peek.width / 2, peek.y + peek.height / 2);
+    ok('a tap does not draw', !(await page.evaluate(() => __run.finished)));
+    ok('a tap explains what to do', /Drag/.test(await page.textContent('.draghint')));
+    ok('flash stops once picked up', !(await page.$eval('.peek', e => e.classList.contains('flash'))));
+    // dropping back inside the bag does not draw
+    await page.mouse.move(peek.x + peek.width / 2, peek.y + peek.height / 2); await page.mouse.down();
+    await page.mouse.move(bag.x + bag.width / 2, bag.y + bag.height * 0.7, { steps: 6 });
+    ok('a ghost tile follows the pointer', await page.$('.drag-ghost') !== null);
+    await page.mouse.up();
+    ok('dropping it back inside the bag does not draw', !(await page.evaluate(() => __run.finished)) && await page.$('.drag-ghost') === null);
+    // dragging out and letting go outside draws
+    await page.mouse.move(peek.x + peek.width / 2, peek.y + peek.height / 2); await page.mouse.down();
+    await page.mouse.move(bag.x + bag.width / 2, bag.y + bag.height + 60, { steps: 8 }); await page.mouse.up();
+    await page.waitForFunction(() => __run.finished);
+    ok('dragging it out of the bag draws a shape', (await page.$$('.tray svg')).length === 1);
+    ok('drawing the first shape completes the tutorial', true);
+    // keyboard: Enter on the tile draws (second visit)
+    await page.evaluate(() => { closeActivity(); openActivity(UNITS[0].subs[0]); });
+    await page.waitForSelector('.peek'); await page.focus('.peek'); await page.keyboard.press('Enter');
+    ok('Enter on the focused tile draws', await page.evaluate(() => __run.finished));
+    // share level, closed bag: drag several out and the tally fills
+    await page.evaluate(() => { closeActivity(); seedCounter = 0; openActivity(UNITS[0].subs[2]); });
+    for (let tries = 0; tries < 6 && !(await page.$('.peek')); tries++) await page.evaluate(() => { closeActivity(); openActivity(UNITS[0].subs[2]); });
+    if (await page.$('.peek')) {
+      for (let i = 0; i < 3; i++) {
+        const p = await box('.peek'), b = await box('.bagdraw svg');
+        await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2); await page.mouse.down();
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height + 40, { steps: 6 }); await page.mouse.up();
+      }
+      ok('three drags put three shapes in the tally', (await page.$$('.tallycol svg')).length === 3);
+    } else ok('closed-bag variant reachable', false);
+    ok('drag tests: no page errors', errors.length === 0, errors.join('|'));
+    await ctx.close();
+  }
+
   // Placement: all right, then a miss on the third.
   for (const plan of ['allright', 'missthird']) {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
