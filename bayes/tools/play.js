@@ -172,54 +172,36 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
-  // Drawing is a drag out of the bag, and the tile flashes until picked up.
+  // The first sub-level's Draw button flashes red (like the scissors in Shapes) until it is tapped.
   {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
     const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(URL + '?seed=3'); await page.evaluate(() => localStorage.clear()); await page.reload();
     await page.evaluate(() => openActivity(UNITS[0].subs[0]));
-    await page.waitForSelector('.peek');
-    // flash: sample the real background across two cycles, as for the scissors
-    const samples = []; for (let i = 0; i < 44; i++) { samples.push(await page.evaluate(() => getComputedStyle(document.querySelector('.peek')).backgroundColor)); await page.waitForTimeout(50); }
-    const parse = c => c.match(/\d+/g).map(Number); const redish = c => { const [r, g] = parse(c); return r > 170 && g < 110; }; const grey = c => { const [r, g] = parse(c); return r > 190 && g > 180; };
-    const redShare = samples.filter(redish).length / samples.length, greyShare = samples.filter(grey).length / samples.length;
-    ok('tile flashes red for over a quarter of the time', redShare > 0.25, String(redShare));
-    ok('tile rests grey for over a quarter of the time', greyShare > 0.25, String(greyShare));
-    const box = async sel => (await page.$(sel)).boundingBox();
-    const peek = await box('.peek'), bag = await box('.bagdraw svg');
-    // a plain tap does not draw
-    await page.mouse.click(peek.x + peek.width / 2, peek.y + peek.height / 2);
-    ok('a tap does not draw', !(await page.evaluate(() => __run.finished)));
-    ok('a tap explains what to do', /Drag/.test(await page.textContent('.draghint')));
-    ok('flash stops once picked up', !(await page.$eval('.peek', e => e.classList.contains('flash'))));
-    // dropping back inside the bag does not draw
-    await page.mouse.move(peek.x + peek.width / 2, peek.y + peek.height / 2); await page.mouse.down();
-    await page.mouse.move(bag.x + bag.width / 2, bag.y + bag.height * 0.7, { steps: 6 });
-    ok('a ghost tile follows the pointer', await page.$('.drag-ghost') !== null);
-    await page.mouse.up();
-    ok('dropping it back inside the bag does not draw', !(await page.evaluate(() => __run.finished)) && await page.$('.drag-ghost') === null);
-    // dragging out and letting go outside draws
-    await page.mouse.move(peek.x + peek.width / 2, peek.y + peek.height / 2); await page.mouse.down();
-    await page.mouse.move(bag.x + bag.width / 2, bag.y + bag.height + 60, { steps: 8 }); await page.mouse.up();
-    await page.waitForFunction(() => __run.finished);
-    ok('dragging it out of the bag draws a shape', (await page.$$('.tray svg')).length === 1);
-    ok('drawing the first shape completes the tutorial', true);
-    // keyboard: Enter on the tile draws (second visit)
+    await page.waitForSelector('.bigbtn.flash');
+    ok('the only button is Draw', (await page.$$eval('#stage button', b => b.map(x => x.textContent.trim()))).join() === 'Draw');
+    const samples = []; for (let i = 0; i < 44; i++) { samples.push(await page.evaluate(() => getComputedStyle(document.querySelector('#stage .bigbtn')).backgroundColor)); await page.waitForTimeout(50); }
+    const parse = c => c.match(/\d+/g).map(Number); const redish = c => { const [r, g] = parse(c); return r > 170 && g < 110; }; const indigo = c => { const [r, , b] = parse(c); return r < 90 && b > 80; };
+    const redShare = samples.filter(redish).length / samples.length, restShare = samples.filter(indigo).length / samples.length;
+    ok('Draw flashes red for over a quarter of the time', redShare > 0.25, String(redShare));
+    ok('Draw rests in its normal colour for over a quarter of the time', restShare > 0.25, String(restShare));
+    ok('tapping Draw puts one shape in the tray and completes the sub-level', await (async () => { await page.click('#stage .bigbtn'); await page.waitForFunction(() => __run.finished); return (await page.$$('.tray svg')).length === 1; })());
+    ok('the flash stops after the tap', !(await page.$eval('#stage .bigbtn', e => e.classList.contains('flash'))));
+    // keyboard: Enter on the focused button (native button behaviour)
     await page.evaluate(() => { closeActivity(); openActivity(UNITS[0].subs[0]); });
-    await page.waitForSelector('.peek'); await page.focus('.peek'); await page.keyboard.press('Enter');
-    ok('Enter on the focused tile draws', await page.evaluate(() => __run.finished));
-    // share level, closed bag: drag several out and the tally fills
-    await page.evaluate(() => { closeActivity(); seedCounter = 0; openActivity(UNITS[0].subs[2]); });
-    for (let tries = 0; tries < 6 && !(await page.$('.peek')); tries++) await page.evaluate(() => { closeActivity(); openActivity(UNITS[0].subs[2]); });
-    if (await page.$('.peek')) {
-      for (let i = 0; i < 3; i++) {
-        const p = await box('.peek'), b = await box('.bagdraw svg');
-        await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2); await page.mouse.down();
-        await page.mouse.move(b.x + b.width / 2, b.y + b.height + 40, { steps: 6 }); await page.mouse.up();
-      }
-      ok('three drags put three shapes in the tally', (await page.$$('.tallyrow svg')).length === 3);
-    } else ok('closed-bag variant reachable', false);
-    ok('drag tests: no page errors', errors.length === 0, errors.join('|'));
+    await page.waitForSelector('.bigbtn.flash'); await page.focus('#stage .bigbtn'); await page.keyboard.press('Enter');
+    ok('Enter on the focused Draw button draws', await page.evaluate(() => __run.finished));
+    // later levels use the same normal buttons: closed-bag share level, three taps of Draw 1
+    let found = false;
+    for (let tries = 0; tries < 12 && !found; tries++) { await page.evaluate(() => { closeActivity(); openActivity(UNITS[0].subs[2]); }); found = !!(await page.$('text=Draw 1')); }
+    ok('closed-bag share level reachable', found);
+    for (let i = 0; i < 3; i++) await page.click('text=Draw 1');
+    ok('three taps of Draw 1 put three shapes in the tally', (await page.$$('.tallyrow svg')).length === 3);
+    await page.click('text=Draw 5');
+    ok('Draw 5 adds five more', (await page.$$('.tallyrow svg')).length === 8);
+    await page.click('text=Draw 5');
+    ok('drawing stops at 12 shapes and the buttons turn off', (await page.$$('.tallyrow svg')).length === 12 && await page.isDisabled('text=Draw 1'));
+    ok('draw tests: no page errors', errors.length === 0, errors.join('|'));
     await ctx.close();
   }
 

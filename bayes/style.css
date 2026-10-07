@@ -182,48 +182,16 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .chipbtns button { width: 25px; }
 .chipcol .stage-note { font-size: .7rem; line-height: 1.1; }
 
-/* ---- drawing by dragging a shape out of the bag ---- */
-.bagdraw { position: relative; width: fit-content; margin: 0 auto; }
-.peek { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); width: 38px; height: 38px; border-radius: 12px;
-  border: 2px solid rgba(0,0,0,.25); background: #cfc8bb; color: #4a4338; font-weight: 800; font-size: 1.1rem; touch-action: none; cursor: grab; padding: 0; }
-.peek.lifted { opacity: .4; } .peek:disabled { opacity: .3; cursor: default; }
-.peek:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-.peek.nudge { animation: nudge .35s ease-out; }
-@keyframes nudge { 0%,100% { transform: translateX(-50%); } 25% { transform: translateX(-50%) translateY(-8px); } 60% { transform: translateX(-50%) translateY(3px); } }
-/* Calls for the drag the way the scissors call for a tap in Shapes: a real
-   flash (full red for about a third of each cycle, then a clear rest) and a
-   little growth, so it reads as a flash and not a tint. */
-.peek.flash { animation: callflash 1.1s ease-in-out infinite; }
-@keyframes callflash {
-  0%, 10% { background: #cfc8bb; box-shadow: 0 0 0 0 rgba(193,68,58,0); color: #4a4338; transform: translateX(-50%) scale(1); }
-  22%, 55% { background: var(--danger); box-shadow: 0 0 0 7px rgba(193,68,58,.35); color: #fff; transform: translateX(-50%) scale(1.12); }
-  70%, 100% { background: #cfc8bb; box-shadow: 0 0 0 0 rgba(193,68,58,0); color: #4a4338; transform: translateX(-50%) scale(1); }
+/* The Draw button calls for the tap the way the scissors do in Shapes: full
+   red for about a third of each cycle, then a clear rest, plus a little growth,
+   so it reads as a flash and not a tint. */
+.bigbtn.flash { animation: btnflash 1.1s ease-in-out infinite; }
+@keyframes btnflash {
+  0%, 10% { background: var(--accent); box-shadow: 0 0 0 0 rgba(193,68,58,0); transform: scale(1); }
+  22%, 55% { background: var(--danger); box-shadow: 0 0 0 7px rgba(193,68,58,.35); transform: scale(1.1); }
+  70%, 100% { background: var(--accent); box-shadow: 0 0 0 0 rgba(193,68,58,0); transform: scale(1); }
 }
-@media (prefers-reduced-motion: reduce) { .peek.flash { animation: none; background: var(--danger); color: #fff; box-shadow: 0 0 0 6px rgba(193,68,58,.35); } .tray svg, .bigshape svg { animation: none; } }
-.drag-ghost { position: fixed; z-index: 60; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 13px; background: #cfc8bb;
-  border: 2px solid rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; font-weight: 800; pointer-events: none; box-shadow: 0 6px 14px rgba(0,0,0,.25); }
-.draghint { text-align: center; font-size: .8rem; font-weight: 700; color: var(--muted); min-height: 1.1em; margin-top: 2px; }
-.bagdraw.spent .bagbody { opacity: .7; }
-
-/* "Which bag?" and "Rare bags": the two main bags and the shelf bags are 150%
-   of their original size (120px / 24px wide), scaled down only when the screen
-   is too short to fit them without scrolling. */
-.bags-row.big .bagbox { max-width: 190px; }
-.bags-row.big .bagbox svg { width: min(180px, 25.5vh); }
-.shelf.big { flex-wrap: wrap; width: min(100%, 210px); margin: 0 auto; gap: 4px 4px; }
-.shelf.big svg { width: 36px; height: 40px; }
-
-/* Nothing in the stage may be squashed to make room: if it doesn't fit, the
-   layout must change. (Without this the share bar silently shrank to a sliver
-   on short screens and the no-scroll check could not see it.) */
-.stage > * { flex-shrink: 0; }
-
-/* The smallest phones: the 150% bags give way a little rather than scroll. */
-@media (max-height: 600px) {
-  .bags-row.big .bagbox svg { width: min(180px, 21.5vh); }
-  .shelf.big svg { width: 30px; height: 33px; }
-  .shelf.big { width: min(100%, 175px); gap: 3px 3px; }
-}
+@media (prefers-reduced-motion: reduce) { .bigbtn.flash { animation: none; background: var(--danger); box-shadow: 0 0 0 6px rgba(193,68,58,.35); } .tray svg, .drawnbox svg, .bigshape svg { animation: none; } }
 
 /* ---- belief between two kinds of bag: a thumb track over a proportion bar ---- */
 .beliefbar { display: flex; flex-direction: column; gap: 4px; }

@@ -16,12 +16,19 @@ const TOL_BELIEF = 0.15; // a belief is right if it's within 15 points
 // Tutorials: one thing on screen and one possible move.
 // ---------------------------------------------------------------------------
 function buildTutDraw(ctx) {
-  ctx.setPrompt('Pull one shape out of the bag. <b>Drag</b> the flashing tile out of the bag and let go.');
+  ctx.setPrompt('Pull one shape out of the bag. Tap the flashing <b>Draw</b> button.');
   const tray = Tray();
-  const drawer = BagDrawer({ nC: 10, nS: 0, seed: 3, size: 'lg', sealed: false, flash: true,
-    onDraw: () => { drawer.setDisabled(true); tray.add('c', { size: 40 }); ctx.complete('That is one draw. Every draw gives you one shape.'); } });
-  ctx.stage.append(drawer.el, el('div', { class: 'draghint', id: 'drawhint' }), tray.el);
-  return { solve: () => drawer.drawNow(), drawer };
+  const bag = el('div', { class: 'bagbox', style: 'margin:0 auto', html: bagSVG(10, 0, { seed: 3, size: 190 }) });
+  // The button calls for the tap the way the scissors do in Shapes: a real
+  // flash, until it has been pressed.
+  const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center' }, 'Draw');
+  ctx.stage.append(bag, tray.el, btn);
+  const go = () => {
+    btn.disabled = true; btn.classList.remove('flash'); tray.add('c', { size: 40 });
+    ctx.complete('That is one draw. Every draw gives you one shape.');
+  };
+  btn.addEventListener('click', go);
+  return { solve: go };
 }
 
 function buildTutSlide(ctx) {
@@ -43,7 +50,7 @@ function buildShare(ctx, forceVariant) {
   const variant = forceVariant || (rng() < 0.5 ? 'draw' : 'bag');
   const bar = ShareBar({ value: 0.5, leftText: 'Circles', rightText: 'Squares', label: 'Share of circles' });
   const bagSeed = BM.int(rng, 1, 999);
-  let tally = null, drawer = null, b5 = null;
+  let tally = null, b1 = null, b5 = null;
   const bagEl = variant === 'bag' ? el('div', { class: 'bagbox', style: 'margin:0 auto', html: bagSVG(nC, 10 - nC, { seed: bagSeed, size: 190 }) }) : null;
   const update = () => ctx.setReady(bar.touched() && (variant === 'bag' || tally.counts.c + tally.counts.s >= 6));
   bar.el.addEventListener('pointerup', update); bar.el.addEventListener('keyup', update);
@@ -52,7 +59,7 @@ function buildShare(ctx, forceVariant) {
     for (let i = 0; i < k && tally.counts.c + tally.counts.s < MAX_DRAWS; i++) tally.add(BM.drawShape(rng, nC / 10));
     const n = tally.counts.c + tally.counts.s;
     count.textContent = n >= MAX_DRAWS ? `${n} drawn: that is plenty` : `${n} drawn`;
-    if (n >= MAX_DRAWS) { drawer.setDisabled(true); b5.disabled = true; }
+    if (n >= MAX_DRAWS) { b1.disabled = true; b5.disabled = true; }
     update();
   };
   const count = el('div', { class: 'stage-note' }, '0 drawn');
@@ -60,11 +67,12 @@ function buildShare(ctx, forceVariant) {
     ctx.setPrompt('Look at the bag. Slide the divider to show what share of the shapes are <b>circles</b>.');
     ctx.stage.append(bagEl, bar.el);
   } else {
-    ctx.setPrompt('The bag is closed. Drag at least 6 shapes out of it, then slide the divider to match your tally.');
+    ctx.setPrompt('The bag is closed. Draw at least 6 shapes, then slide the divider to match your tally.');
     tally = Tally();
-    drawer = BagDrawer({ nC, nS: 10 - nC, seed: bagSeed, size: 'md', sealed: true, onDraw: () => draws(1), label: 'Draw a shape' });
-    b5 = el('button', { class: 'bigbtn alt', onclick: () => draws(5) }, 'Draw 5 at once');
-    ctx.stage.append(drawer.el, tally.el, count, el('div', { class: 'btnrow' }, b5), bar.el);
+    b1 = el('button', { class: 'bigbtn', onclick: () => draws(1) }, 'Draw 1');
+    b5 = el('button', { class: 'bigbtn alt', onclick: () => draws(5) }, 'Draw 5');
+    ctx.stage.append(el('div', { class: 'bagbox', style: 'margin:0 auto', html: bagSVG(nC, 10 - nC, { seed: bagSeed, size: 120, sealed: true }) }),
+      el('div', { class: 'btnrow' }, b1, b5), tally.el, count, bar.el);
   }
   const target = () => variant === 'bag' ? nC / 10 : tally.counts.c / (tally.counts.c + tally.counts.s);
   return {
@@ -284,26 +292,24 @@ function buildSeveral(ctx) {
   const N = BM.int(rng, 2, 4), trueIsA = rng() < 0.5;
   const draws = Array.from({ length: N }, () => BM.drawShape(rng, trueIsA ? pA : pB));
   const truth = BM.posteriorA(pA, pB, 5, 5, draws);
-  ctx.setPrompt(`A bag, kind <b>A</b> or <b>B</b> (equally common), is picked. Drag ${N} shapes out one at a time. After each, drag toward the kind you think it is.`);
+  ctx.setPrompt(`A bag, kind <b>A</b> or <b>B</b> (equally common), is picked. Draw ${N} shapes one at a time. After each, drag toward the kind you think it is.`);
   const tray = Tray(); let k = 0;
-  let drawer = null;
   const bags = el('div', { class: 'bags-row' },
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pA), 10 - BM.circlesPerTen(pA), { seed: 11, badge: 'A', size: 70 }) }),
-    el('div', { class: 'bagbox' }),
+    el('div', { class: 'bagbox', html: bagSVG(5, 5, { seed: 31, size: 120, sealed: true }) }),
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pB), 10 - BM.circlesPerTen(pB), { seed: 12, badge: 'B', size: 70 }) }));
   const bar = BeliefBar({ value: 0.5, label: 'How sure it is kind A' });
-  const left = el('div', { class: 'stage-note' }, `Drag ${N} shapes out of the closed bag`);
+  const btn = el('button', { class: 'bigbtn' }, `Draw (${N} to go)`);
   const upd = () => ctx.setReady(k === N && bar.touched());
   function draw() {
     if (k >= N) return;
     tray.add(draws[k]); k++;
-    left.textContent = k === N ? 'All drawn' : `${N - k} to go`; if (k === N) drawer.setDisabled(true); upd();
+    btn.textContent = k === N ? 'All drawn' : `Draw (${N - k} to go)`; btn.disabled = k === N; upd();
   }
-  drawer = BagDrawer({ nC: 5, nS: 5, seed: 31, size: 'md', sealed: true, onDraw: draw });
-  bags.children[1].append(drawer.el);
+  btn.addEventListener('click', draw);
   bar.el.addEventListener('pointerup', upd); bar.el.addEventListener('keyup', upd);
   const trail = el('div', { class: 'trail' });
-  ctx.stage.append(bags, left, tray.el, bar.el, trail);
+  ctx.stage.append(bags, el('div', { class: 'btnrow' }, btn), tray.el, bar.el, trail);
   return {
     check() {
       const ok = Math.abs(bar.get() - truth) <= TOL_BELIEF + 1e-9;
@@ -385,11 +391,11 @@ const UNITS = [
     intro: 'Before any formulas: draw shapes from bags, look at shares, and learn to change your mind when evidence arrives.',
     subs: [
       { id: 'u0-draw', name: 'First draw', blurb: 'Pull one shape out of a bag.', kind: 'tutorial', build: buildTutDraw,
-        help: 'Drag the flashing tile out of the bag and let go. That is the only thing you can do here. (With a keyboard, press Enter on it.)' },
+        help: 'Tap the flashing Draw button. That is the only thing you can do here.' },
       { id: 'u0-slide', name: 'First slide', blurb: 'Make a bar match the shapes.', kind: 'tutorial', build: buildTutSlide,
         help: 'Drag the white divider along the bar. Left is circles, right is squares.' },
       { id: 'u0-share', name: 'Share of circles', blurb: 'Slide a divider to a share.', kind: 'streak', target: 5, hearts: 2, build: buildShare,
-        help: 'Slide the divider to show what share of the shapes are circles. Sometimes you look at the bag; sometimes you drag shapes out of a closed bag and match your tally. Within one shape in ten counts as right.' },
+        help: 'Slide the divider to show what share of the shapes are circles. Sometimes you look at the bag; sometimes you tap Draw on a closed bag and match your tally. Within one shape in ten counts as right.' },
       { id: 'u0-many', name: 'How many draws?', blurb: 'Fewer draws wobble more.', kind: 'streak', target: 5, hearts: 2, build: buildHowMany,
         help: 'Pick how many draws each person gets and press Run to see where twenty people land. Press Check when you think nearly everyone will land inside the green band.' },
       { id: 'u0-inside', name: 'Inside a group', blurb: 'Look inside a group.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildInside(ctx, false),
@@ -399,7 +405,7 @@ const UNITS = [
       { id: 'u0-two', name: 'Which bag?', blurb: 'One draw, two kinds of bag.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildTwoBags(ctx, false),
         help: 'A bag is picked at random from the shelf and one shape is drawn. Drag the thumb toward the kind you think it is: the closer to an end, the surer. The bar below shows the split. After you check, you will see ten imagined draws from every bag.' },
       { id: 'u0-several', name: 'More draws', blurb: 'Change your mind as you go.', kind: 'streak', target: 5, hearts: 2, build: buildSeveral,
-        help: 'Drag one shape at a time out of the closed bag, and after each drag the thumb toward the kind you think it is. A circle then a square can cancel out.' },
+        help: 'Tap Draw to take one shape at a time out of the closed bag, and after each drag the thumb toward the kind you think it is. A circle then a square can cancel out.' },
       { id: 'u0-rare', name: 'Rare bags', blurb: 'Some bags are scarcer.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildTwoBags(ctx, true),
         help: 'Look at the shelf: one kind of bag is rare. The shape you see may point at the rare kind, but rare is still rare.' },
       { id: 'u0-chips', name: 'Many bags', blurb: 'Spread ten chips of belief.', kind: 'streak', target: 5, hearts: 2, build: buildChips,
