@@ -54,6 +54,21 @@ Ranked by how often and how stubbornly they recur.
 - Check coverage by simulating learners (Shapes' belief-model simulation) with these snags as the belief errors.
 - Reuse the shell from the public jjgerard/research-methods repo (needs it attached to this session).
 
+## Visual-first principle (new)
+Requested: make as much as possible visual rather than a text question with choices, which is a known weakness of the research-methods game. Rule: if the answer can be shown or made by manipulating something on screen, do that; use text choices only for naming a term after the player has felt it.
+- **Bayes:** draw shapes from a bag by tapping; a 100-dot natural-frequency grid the player fills or highlights; bet by dragging a marker on a bar for each bag; drag prior and likelihood bars and watch the posterior; a slider for how many draws.
+- **Scales:** drag a probability on a number line and watch log-odds and odds move; drag cell bars on a logit axis and watch the mean marker diverge from the mean probability.
+- **Coding:** toggle a factor between -1/+1 and -.5/+.5 and watch the intercept marker and the level gap change.
+- **Design table:** drag each participant's dots onto cells; within-subject = one person's dots in several cells, between = one cell only; count dots per cell.
+- **Random intercepts / partial pooling:** drag per-person lines up or down; a shrinkage slider pulls them toward the group mean.
+- **Estimability:** a grid with one dot per cell vs several; the variance component you can still separate lights up, the one you cannot greys out.
+- **Formula notation:** build a formula from tiles and watch a diagram show which variance components that formula creates.
+- **Debug the model:** a design-matrix heatmap; tap the columns that drop, or the empty cell that causes it.
+- **Simulate it:** sliders for the true intercept, effect and subject SD; data points appear; refit and compare lines.
+- **R part 1:** a variable as a labelled box that visibly changes on reassignment; a vector as a row of cells to tap for indexing; a condition lights up the cells it selects; a data frame as a grid where `$` highlights a column.
+- **R part 2:** the data frame as a visible table of dots and columns. filter removes rows, mutate adds a column, group_by colours rows by group without changing the count, summarise collapses each colour to one row. "Predict the row count" is answered by setting a counter or dragging a selection, not choosing from options. Joins: draw lines between key columns; direction is visible.
+- Constraints carry over: fits 360x640 with no scrolling; thumb-sized targets; keyboard and screen-reader alternatives (research-methods used a snapping slider for this); never encode meaning in colour alone.
+
 ## Licence for Bayesian source material (Nicenboim, Schad, Vasishth)
 - The book website states no licence or copyright holder. The GitHub repo bnicenboim/bayescogsci has an MIT LICENSE, "Copyright (c) 2025 Bruno Nicenboim" (keep the notice if code is reused).
 - Unverified: whether the print publisher holds separate rights in prose or figures, and whether MIT is meant to cover prose.
@@ -138,4 +153,4 @@ Similarity-based interference in psycholinguistics. Git/GitHub (optional small s
 - Decided: Game C is one game in two parts.
 - Real R in the browser (WebR) vs simulated checking.
 - Decided: reuse the jjgerard/research-methods shell (quiz/streak/graph/typed-answer). Borrow drag-and-snap pieces from jjgerard/shapes only where an activity needs assembling tiles (R part 2 pipelines). Both repos were cloned read-only for reference; neither can be pushed to from this session.
-- Answer keys cannot be run here: R is not installed in this environment (Python and Node are). Either install R to verify keys, or verify numerics in Python.
+- R 4.3.3 is now installed in this session with lme4, dplyr, tidyr, emmeans and lmerTest (via apt), and verify/chat-claims.R checks the numbers and claims from the chats. It must be re-installed in each new session.
