@@ -1,4 +1,4 @@
-# Shape Up
+# Well Rounded Learning
 
 Short, visual, mobile-first browser games that teach statistics and R from a much lower starting point than most tutorials. Static site: no build, no accounts, no server. Progress is stored in the browser.
 
