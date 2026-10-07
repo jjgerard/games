@@ -122,6 +122,29 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
+  // Rare bags: a small shelf (4 or 5 bags) with a genuinely rare kind.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(URL + '?seed=13'); await page.evaluate(() => localStorage.clear()); await page.reload();
+    await page.evaluate(() => openActivity(UNITS[0].subs.find(s => s.id === 'u0-rare')));
+    const sizes = new Set(); let rareOk = true, misfit = 0;
+    for (let i = 0; i < 60; i++) {
+      await page.waitForSelector('.shelf');
+      const s = await page.$$eval('.shelf svg', n => ({ A: n.filter(x => x.getAttribute('aria-label') === 'bag A').length, B: n.filter(x => x.getAttribute('aria-label') === 'bag B').length }));
+      sizes.add(s.A + s.B); if (s.A + s.B > 5 || s.A < 1 || s.B < 1 || Math.min(s.A, s.B) > 2) rareOk = false;
+      const f = await fits(page); if (f.v > 1 || f.stage > 1 || f.over) misfit++;
+      await page.evaluate(() => __run.ctrl.solve()); await page.evaluate(() => document.getElementById('quiz-action').click());
+      if (await page.evaluate(() => __run.finished)) await page.evaluate(() => { closeActivity(); openActivity(UNITS[0].subs.find(s => s.id === 'u0-rare')); });
+      else await page.evaluate(() => document.getElementById('quiz-action').click());
+    }
+    ok('rare bags: shelf never has more than 5 bags, always one rare kind (1 or 2)', rareOk, [...sizes].join(','));
+    ok('rare bags: both 4- and 5-bag shelves occur', sizes.has(4) && sizes.has(5), [...sizes].join(','));
+    ok('rare bags: every shelf fits', misfit === 0, String(misfit));
+    ok('rare bags: no page errors', errors.length === 0, errors.join('|'));
+    await ctx.close();
+  }
+
   // Belief bar: dragging toward a kind means MORE sure of that kind.
   {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });

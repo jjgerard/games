@@ -230,7 +230,12 @@ function makeTwoBags(rng, rare) {
   const pA = BM.pick(rng, [0.7, 0.8, 0.9]);
   const pB = rng() < 0.5 ? Math.round((1 - pA) * 10) / 10 : BM.pick(rng, [0.1, 0.2, 0.3]);
   let nA = 5, nB = 5;
-  if (rare) { const r = BM.pick(rng, [1, 2, 3]); if (rng() < 0.5) { nA = r; nB = 10 - r; } else { nB = r; nA = 10 - r; } }
+  if (rare) {
+    // A small shelf, so the scarcity can be seen and eyeballed: four or five
+    // bags in all, with one of the rare kind (or two when there are five).
+    const total = BM.pick(rng, [4, 5]), r = total === 4 ? 1 : BM.pick(rng, [1, 2]);
+    if (rng() < 0.5) { nA = r; nB = total - r; } else { nB = r; nA = total - r; }
+  }
   let shape = BM.pick(rng, ['c', 's']);
   if (rare && rng() < 0.8) {
     // show the shape that points towards the RARE kind, so the obvious
