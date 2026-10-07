@@ -1,6 +1,6 @@
 # Level plan (draft 1)
 
-Status: planning only. The shapes and research-methods games and the research-methods chat were not available when this was written, so nothing here is checked against them.
+Status: planning only. Draft 1 predates the Shapes build log and the Trial and Error chat; the section "Conventions inherited from Shapes and Trial and Error" was added after reading them. The level lists below have NOT yet been re-run against them or against the full stats and R chats.
 
 ## Evidence base
 - `Introduction_to_R.pdf` (62 slides): the course outline and the starred slides.
@@ -26,6 +26,42 @@ Design rules that follow:
 - Seeded simulators with a hidden ground truth so the player can poke, guess, and be told.
 - Every level: one idea, 3-5 trials, 2-4 minutes, instant feedback, name the term after they have felt it.
 - Stats stays in the stats games even when it uses R. R games teach R only.
+
+## Conventions inherited from Shapes and Trial and Error
+Source: Shapes build log (dev thread only; Levels 9-12 in detail, earlier levels only via the summary) and the Trial and Error chat (Levels 1-5, 31 sub-levels, 27 disciplines).
+
+**Format to reuse**
+- Static site, no build, no accounts, progress saved on the device, mobile-first. Mascot, "?" help per activity, About page, README. Engine knows nothing about content; content lives in data files. Cache-busting version on every asset.
+- Fixed progression; levels unlock in order; locked levels show only a number. Sub-levels as a card grid. A few reusable activity types, reused across levels.
+- Streak mechanic: N correct in a row, with hearts (allowed mistakes). User-tuned values: 5 in a row by default, 10 for the key drill sub-levels; 2 hearts on every sub-level, 3 on the hardest. Shapes' final levels switch to limited attempts ("do you know it, not can you work it out").
+- Wrong moves are refused and explained, saying which part was wrong. After 3 wrong in a row, a hint highlights something that fits.
+- Meet the idea before the name (Mystery Level; "keep IV/DV out of 1b so the payoff isn't given away").
+- Every question, including its Check button, must fit a 360x640 (and 320x568) screen with no scrolling. Redundant instruction lines get deleted to make it fit.
+- Typed answers use a no-server matcher against the items in the description, shows "Read as: ...", and asks "did you mean...?" instead of marking wrong. Nothing leaves the device (About promises this).
+- UI accent is kept well away from category colours so the interface never looks like it means something; the mascot is deliberately not a category shape.
+
+**How the user shrinks steps (the "bite-size" rule)**
+- Shapes Level 1 opened too high, so four tutorials were added: (1) two lone triangles, one possible drag; (2) the same, already joined, one possible cut; (3-4) the same actions with more pieces on screen. Nothing on screen but the one shape, so there is no wrong move available.
+- On the first real join, the legal pair lights up immediately, not after two wrong moves. The control to press (scissors) flashes until used.
+- Order complexity within a sub-level group, mixing item types inside each: single factor, then multi factor, then both.
+- Lives vs corrections: early sub-levels give corrections, later ones a limit.
+
+**What the user said to leave out or change (research-methods chat)**
+- No arithmetic. "I don't want students to have to be multiplying things." Use obvious extremes (20 heads in a row, ten 6s) and map them to the null.
+- No "1 in 50" style numbers (bigger = rarer is confusing). Plain percentages, one number compared to the rule; no borderline values (nothing between 4% and 6%).
+- No screen-time-and-language relation, and nothing implying a connection between them. The phone-use example was left out of cross-sectional/longitudinal.
+- Avoid anything that could be misread and cause misinformation: no diet/disease, drugs, crime and demographics, policy, or group differences between kinds of people. Use intuitive examples a second-year in that discipline would know; write limits into the sentence ("up to its elastic limit").
+- Effects in generated graphs are either clearly present or exactly absent. At most 3 x-levels and 2 colours in the interaction graphs; every bar clearly visible.
+- Titles must not carry one discipline's name once the game spans many; check names against existing resources and aim for a double entendre.
+- Not decided by the user (do not assume): correlation vs causation; sampling and test-vs-filler items; "valid but not reliable" items.
+
+**Implications for these games**
+- Bayes Unit 0 must start with a one-possible-move tutorial and contain no arithmetic. Posteriors are compared visually or by sliders; at most "add the counts". This conflicts with parts of the book (ch. 2 onward), so book-level units need visual replacements for any multiplication.
+- Trial and Error Level 5 already teaches "how likely is this data if H0 were true" with no sums. Bayes Unit 0 should start where that stops: two hypotheses (fair coin vs two-headed coin), same evidence, which is likelier? Then flip the condition.
+- Mixed-models and Bayes graph items can reuse the generator idea: effects clearly present or exactly absent, with a hidden seeded truth.
+- R on a phone: typing code is the weak point. Plan for tap-to-assemble code tiles, fill-in-the-blank and error-spotting as the default, and a typed-answer matcher with "Read as:" feedback only where typing is needed.
+- Misconceptions are checked by simulating students (Shapes' belief-model simulation found which levels catch which errors). Do the same here with the snags from the chats once the full chats are in.
+- Reuse the shell from the public `jjgerard/research-methods` repo rather than rebuilding it (needs the repo attached to this session).
 
 ## Licence for Bayesian source material (Nicenboim, Schad, Vasishth)
 - Website states no licence and no copyright holder. It says the book, data and code are free online and the Rmd sources are released.
