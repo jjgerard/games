@@ -237,7 +237,8 @@ function buildInside(ctx, flip) {
 function makeTwoBags(rng, rare) {
   const pA = BM.pick(rng, [0.7, 0.8, 0.9]);
   const pB = rng() < 0.5 ? Math.round((1 - pA) * 10) / 10 : BM.pick(rng, [0.1, 0.2, 0.3]);
-  let nA = 5, nB = 5;
+  // Equally common kinds need no shelf: one of each says the same thing as five of each.
+  let nA = 1, nB = 1;
   if (rare) {
     // A small shelf, so the scarcity can be seen and eyeballed: four or five
     // bags in all, with one of the rare kind (or two when there are five).
@@ -258,14 +259,20 @@ function makeTwoBags(rng, rare) {
 function buildTwoBags(ctx, rare) {
   const rng = ctx.rng, q = makeTwoBags(rng, rare);
   const truth = BM.posteriorA(q.pA, q.pB, q.nA, q.nB, [q.shape]);
-  ctx.setPrompt(`A bag from the shelf gave <b>${iconWord(q.shape)}</b>. Drag toward the kind you think it was. The further, the surer.`);
+  ctx.setPrompt(rare
+    ? `A bag from the shelf gave <b>${iconWord(q.shape)}</b>. Drag toward the kind you think it was. The further, the surer.`
+    : `One of these two kinds of bag, equally common, gave <b>${iconWord(q.shape)}</b>. Drag toward the kind you think it was. The further, the surer.`);
   const bags = el('div', { class: 'bags-row big' },
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(q.pA), 10 - BM.circlesPerTen(q.pA), { seed: 11, badge: 'A', size: 120 }) }),
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(q.pB), 10 - BM.circlesPerTen(q.pB), { seed: 12, badge: 'B', size: 120 }) }));
-  const shelf = Shelf(q.nA, q.nB);
-  shelf.classList.add('big');
-  const drawn = el('div', { class: 'drawnbox' }, el('span', {}, 'Drawn'), shapeNode(q.shape, { size: 40 }));
-  const shelfRow = el('div', { class: 'shelfrow' }, shelf, drawn);
+  // Only a shelf with unequal kinds is worth showing; equal kinds are just 50/50.
+  let shelfRow;
+  if (rare) {
+    const shelf = Shelf(q.nA, q.nB); shelf.classList.add('big');
+    shelfRow = el('div', { class: 'shelfrow' }, shelf, el('div', { class: 'drawnbox' }, el('span', {}, 'Drawn'), shapeNode(q.shape, { size: 40 })));
+  } else {
+    shelfRow = el('div', { class: 'bigshape' }, 'Drawn:', shapeNode(q.shape, { size: 44 }));
+  }
   const bar = BeliefBar({ value: 0.5, label: 'How sure it is kind A' });
   const upd = () => ctx.setReady(bar.touched());
   bar.el.addEventListener('pointerup', upd); bar.el.addEventListener('keyup', upd);
@@ -275,7 +282,9 @@ function buildTwoBags(ctx, rare) {
       const ok = Math.abs(bar.get() - truth) <= TOL_BELIEF + 1e-9;
       bar.lock(); bar.ghost(truth);
       const c = BM.shelfCounts(q.pA, q.pB, q.nA, q.nB, q.shape);
-      const msg = `Imagine ten draws from every bag on the shelf. ${c.fromA + c.fromB} of those draws show ${q.shape === 'c' ? 'a circle' : 'a square'}: ${c.fromA} from kind-A bags and ${c.fromB} from kind-B bags. So ${pct(truth)}% for A.`;
+      const msg = rare
+        ? `Imagine ten draws from every bag on the shelf. ${c.fromA + c.fromB} of those draws show ${q.shape === 'c' ? 'a circle' : 'a square'}: ${c.fromA} from kind-A bags and ${c.fromB} from kind-B bags. So ${pct(truth)}% for A.`
+        : `Imagine ten draws from each kind of bag. ${c.fromA + c.fromB} of those 20 draws show ${q.shape === 'c' ? 'a circle' : 'a square'}: ${c.fromA} from kind A and ${c.fromB} from kind B. So ${pct(truth)}% for A.`;
       return { correct: ok, message: ok ? `Yes. ${msg}` : `Not quite. ${msg}` };
     },
     reveal() { bags.remove(); shelfRow.replaceWith(FreqGrid(q.pA, q.pB, q.nA, q.nB, q.shape)); },
@@ -294,10 +303,10 @@ function buildSeveral(ctx) {
   const truth = BM.posteriorA(pA, pB, 5, 5, draws);
   ctx.setPrompt(`A bag, kind <b>A</b> or <b>B</b> (equally common), is picked. Draw ${N} shapes one at a time. After each, drag toward the kind you think it is.`);
   const tray = Tray(); let k = 0;
-  const bags = el('div', { class: 'bags-row' },
-    el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pA), 10 - BM.circlesPerTen(pA), { seed: 11, badge: 'A', size: 70 }) }),
-    el('div', { class: 'bagbox', html: bagSVG(5, 5, { seed: 31, size: 120, sealed: true }) }),
-    el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pB), 10 - BM.circlesPerTen(pB), { seed: 12, badge: 'B', size: 70 }) }));
+  // The same two big bags as in "Which bag?"; the one you draw from is hidden, and is one of these.
+  const bags = el('div', { class: 'bags-row big' },
+    el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pA), 10 - BM.circlesPerTen(pA), { seed: 11, badge: 'A', size: 120 }) }),
+    el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pB), 10 - BM.circlesPerTen(pB), { seed: 12, badge: 'B', size: 120 }) }));
   const bar = BeliefBar({ value: 0.5, label: 'How sure it is kind A' });
   const btn = el('button', { class: 'bigbtn' }, `Draw (${N} to go)`);
   const upd = () => ctx.setReady(k === N && bar.touched());
@@ -398,10 +407,8 @@ const UNITS = [
         help: 'Slide the divider to show what share of the shapes are circles. Sometimes you look at the bag; sometimes you tap Draw on a closed bag and match your tally. Within one shape in ten counts as right.' },
       { id: 'u0-many', name: 'How many draws?', blurb: 'Fewer draws wobble more.', kind: 'streak', target: 5, hearts: 2, build: buildHowMany,
         help: 'Pick how many draws each person gets and press Run to see where twenty people land. Press Check when you think nearly everyone will land inside the green band.' },
-      { id: 'u0-inside', name: 'Inside a group', blurb: 'Look inside a group.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildInside(ctx, false),
-        help: 'First tap the group you are picking from (the others fade). Then slide to show what share of that group has the property. The group and the question change every time.' },
       { id: 'u0-flip', name: 'Flip it', blurb: 'Not the same the other way.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildInside(ctx, true),
-        help: 'Same as before, but the question can be either way round. Always tap the group you are picking from first.' },
+        help: 'First tap the group you are picking from (the others fade). Then slide to show what share of that group has the property. The question can be either way round, and the answers are not the same both ways, so look closely at which group you are picking from.' },
       { id: 'u0-two', name: 'Which bag?', blurb: 'One draw, two kinds of bag.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildTwoBags(ctx, false),
         help: 'A bag is picked at random from the shelf and one shape is drawn. Drag the thumb toward the kind you think it is: the closer to an end, the surer. The bar below shows the split. After you check, you will see ten imagined draws from every bag.' },
       { id: 'u0-several', name: 'More draws', blurb: 'Change your mind as you go.', kind: 'streak', target: 5, hearts: 2, build: buildSeveral,
@@ -423,7 +430,6 @@ const UNITS = [
 // ---------------------------------------------------------------------------
 const PLACEMENT = [
   { id: 'u0-share', unlocks: ['u0-draw', 'u0-slide', 'u0-share', 'u0-many'], build: ctx => buildShare(ctx, 'bag') },
-  { id: 'u0-inside', unlocks: ['u0-inside'], build: ctx => buildInside(ctx, false) },
   { id: 'u0-flip', unlocks: ['u0-flip'], build: ctx => buildInside(ctx, true) },
   { id: 'u0-two', unlocks: ['u0-two', 'u0-several'], build: ctx => buildTwoBags(ctx, false) },
   { id: 'u0-rare', unlocks: ['u0-rare'], build: ctx => buildTwoBags(ctx, true) },

@@ -13,12 +13,11 @@ Every sub-level is something you move or draw, not a list of options. Nothing as
 | 1 | First slide | drag a divider along a bar (the only possible move) |
 | 2 | Share of circles | slide a divider to a share, from a visible bag or a tally |
 | 3 | How many draws? | choose a sample size, run 20 people, see how they scatter |
-| 4 | Inside a group | tap the group you are inside (circles, squares, dotted or plain), then slide to a share; a different question each time |
-| 5 | Flip it | same, either way round; shows the two directions differ |
-| 6 | Which bag? | one draw, two kinds of bag; drag a thumb toward the kind you think it is, with a bar showing the split; reveal is ten imagined draws per bag |
-| 7 | More draws | tap Draw on a closed bag and update your belief draw by draw |
-| 8 | Rare bags | a scarce kind of bag; base rate vs the obvious guess |
-| 9 | Many bags | spread ten chips over several possible bags |
+| 4 | Flip it | tap the group you are inside (circles, squares, dotted or plain), slide to a share; the reveal shows the flipped question has a different answer |
+| 5 | Which bag? | one draw, two equally common kinds of bag; drag a thumb toward the kind you think it is, with a bar showing the split; reveal is ten imagined draws per kind |
+| 6 | More draws | tap Draw on a hidden bag (one of the two shown) and update your belief draw by draw |
+| 7 | Rare bags | the same, but one kind is scarce on a shelf of four or five bags |
+| 8 | Many bags | spread ten chips over several possible bags |
 
 ## What is in Unit 1
 The three pieces of a Bayesian update, built by hand before they are named (the names arrive in the explanation afterwards).

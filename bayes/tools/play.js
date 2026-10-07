@@ -31,7 +31,7 @@ async function checkFit(page, label) {
     ok(`${tag} units screen`, await page.isVisible('#screen-units'));
     await page.click('#unit-grid .tile:not(.locked)');
     const subs = await page.$$eval('#sub-grid .tile', t => t.length);
-    ok(`${tag} unit has 10 sub-levels`, subs === 10, String(subs));
+    ok(`${tag} unit has 9 sub-levels`, subs === 9, String(subs));
     ok(`${tag} only the first sub-level is open`, (await page.$$eval('#sub-grid .tile:not(.locked)', t => t.length)) === 1);
 
     for (let i = 0; i < subs; i++) {
@@ -69,7 +69,7 @@ async function checkFit(page, label) {
       const done = await page.$$eval('#sub-grid .tile.done', t => t.length);
       ok(`${tag} ${sub.id} marked done (${done}/${subs})`, done === i + 1);
     }
-    ok(`${tag} points awarded`, (await page.evaluate(() => JSON.parse(localStorage.getItem('bayes:v1')).points)) === 500);
+    ok(`${tag} points awarded`, (await page.evaluate(() => JSON.parse(localStorage.getItem('bayes:v1')).points)) === 450);
     ok(`${tag} no page errors`, errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
@@ -98,7 +98,7 @@ async function checkFit(page, label) {
   }
 
   // "Inside a group" varies: all eight (group, property) questions appear, never the same one twice running, and each fits.
-  for (const id of ['u0-inside', 'u0-flip']) {
+  for (const id of ['u0-flip']) {
     const ctx = await browser.newContext({ viewport: { width: 320, height: 568 } });
     const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(URL + '?seed=11'); await page.evaluate(() => localStorage.clear()); await page.reload();
@@ -146,7 +146,7 @@ async function checkFit(page, label) {
   }
 
   // "Which bag?": the 150% bags stay inside their columns and centred, and keep their size, on every phone shape.
-  for (const id of ['u0-two', 'u0-rare']) {
+  for (const id of ['u0-two', 'u0-rare', 'u0-several']) {
     const bad = [];
     for (const [w, h] of [[320, 568], [360, 640], [360, 800], [375, 667], [390, 844], [412, 915], [414, 800], [768, 1024], [1280, 800]]) {
       const ctx = await browser.newContext({ viewport: { width: w, height: h } });
@@ -159,10 +159,11 @@ async function checkFit(page, label) {
         const svgs = [...document.querySelectorAll('.bags-row.big .bagbox svg')].map(s => s.getBoundingClientRect());
         return { w: svgs[0].width, spillL: Math.max(...svgs.map((s, i) => boxes[i].left - s.left)), spillR: Math.max(...svgs.map((s, i) => s.right - boxes[i].right)),
           off: ((svgs[0].left + svgs[1].right) / 2) - (row.left + row.width / 2), gap: (svgs[0].left - row.left) - (row.right - svgs[1].right), sizeDiff: Math.abs(svgs[0].width - svgs[1].width),
-          shelf: document.querySelector('.shelf.big svg').getBoundingClientRect().width };
+          shelf: document.querySelector('.shelf.big svg') ? document.querySelector('.shelf.big svg').getBoundingClientRect().width : 99, hasShelf: !!document.querySelector('.shelf') };
       });
-      const old = Math.min(120, 0.17 * h), want = Math.min(box => 0, 1);
-      const fine = m.spillL <= 0.5 && m.spillR <= 0.5 && Math.abs(m.off) <= 1 && Math.abs(m.gap) <= 1 && m.sizeDiff <= 0.5 && m.w >= old * 1.2 && m.shelf >= 24 * 1.2;
+      const old = Math.min(120, 0.17 * h);
+      const shelfRight = id === 'u0-rare' ? m.hasShelf : !m.hasShelf; // only the rare-bags level shows a shelf
+      const fine = shelfRight && m.spillL <= 0.5 && m.spillR <= 0.5 && Math.abs(m.off) <= 1 && Math.abs(m.gap) <= 1 && m.sizeDiff <= 0.5 && m.w >= old * 1.2 && m.shelf >= 24 * 1.2;
       if (!fine) bad.push(`${w}x${h} ${JSON.stringify(m)}`);
       await ctx.close();
     }
@@ -231,7 +232,7 @@ async function checkFit(page, label) {
 
   // ---------------- Unit 1 ----------------
   {
-    const U0 = ['u0-draw', 'u0-slide', 'u0-share', 'u0-many', 'u0-inside', 'u0-flip', 'u0-two', 'u0-several', 'u0-rare', 'u0-chips'];
+    const U0 = ['u0-draw', 'u0-slide', 'u0-share', 'u0-many', 'u0-flip', 'u0-two', 'u0-several', 'u0-rare', 'u0-chips'];
     const ctx0 = await browser.newContext({ viewport: { width: 360, height: 640 } });
     const p0 = await ctx0.newPage(); await p0.goto(URL + '?seed=2'); await p0.evaluate(() => localStorage.clear()); await p0.reload();
     await p0.click('#btn-start');
@@ -319,7 +320,7 @@ async function checkFit(page, label) {
     const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(URL + '?seed=7'); await page.evaluate(() => localStorage.clear()); await page.reload();
     await page.click('#btn-placement');
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 5; i++) {
       await page.waitForSelector('#stage > *');
       await page.evaluate((wrong) => wrong ? __run.ctrl.solveWrong() : __run.ctrl.solve(), plan === 'missthird' && i === 2);
       await checkFit(page, `placement ${plan} item ${i + 1}`);
@@ -327,11 +328,11 @@ async function checkFit(page, label) {
       await page.evaluate(() => document.getElementById('quiz-action').click());
     }
     const txt = await page.textContent('#stage');
-    ok(`placement ${plan} result shown`, plan === 'allright' ? /every picture right/.test(txt) : /Flip it/.test(txt), txt);
+    ok(`placement ${plan} result shown`, plan === 'allright' ? /every picture right/.test(txt) : /Which bag\?/.test(txt), txt);
     await page.evaluate(() => document.getElementById('quiz-action').click());
     await page.waitForSelector('#screen-unit:not(.hidden)');
     const doneCount = await page.$$eval('#sub-grid .tile.done', t => t.length);
-    ok(`placement ${plan} marks skipped sub-levels done`, plan === 'allright' ? doneCount === 10 : doneCount === 5, String(doneCount));
+    ok(`placement ${plan} marks skipped sub-levels done`, plan === 'allright' ? doneCount === 9 : doneCount === 5, String(doneCount));
     ok(`placement ${plan} awards no points`, (await page.evaluate(() => JSON.parse(localStorage.getItem('bayes:v1')).points)) === 0);
     ok(`placement ${plan} no page errors`, errors.length === 0, errors.join('|'));
     await ctx.close();
