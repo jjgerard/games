@@ -10,7 +10,7 @@ async function fits(page) {
   return page.evaluate(() => {
     const b = document.getElementById('quiz-body'), s = document.getElementById('stage');
     const over = [...b.querySelectorAll('*')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1); }).length;
-    const bar = document.querySelector('#stage .sharebar'); const squashed = bar && bar.getBoundingClientRect().height < 40 ? 1 : 0;
+    const bar = document.querySelector('#stage .sharebar'), bb = document.querySelector('#stage .beliefbar'); const squashed = (bar && bar.getBoundingClientRect().height < 40) || (bb && bb.getBoundingClientRect().height < 68) ? 1 : 0;
     return { v: b.scrollHeight - b.clientHeight, stage: s.scrollHeight - s.clientHeight, h: document.documentElement.scrollWidth - innerWidth, over: over + squashed };
   });
 }
@@ -119,6 +119,33 @@ async function checkFit(page, label) {
     ok(`${id}: every variant fits 320x568 (before and after checking)`, misfit === 0, String(misfit));
     ok(`${id}: correct answers accepted for every variant`, bad === 0, String(bad));
     ok(`${id}: no page errors`, errors.length === 0, errors.join('|'));
+    await ctx.close();
+  }
+
+  // Belief bar: dragging toward a kind means MORE sure of that kind.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(URL + '?seed=9'); await page.evaluate(() => localStorage.clear()); await page.reload();
+    await page.evaluate(() => openActivity(UNITS[0].subs.find(s => s.id === 'u0-two'))); await page.waitForSelector('.bb-track');
+    const tr = await (await page.$('.bb-track')).boundingBox();
+    const val = () => page.evaluate(() => Number(document.querySelector('.bb-track').getAttribute('aria-valuenow')));
+    const widthA = () => page.evaluate(() => document.querySelector('.bb-seg.bar-A').getBoundingClientRect().width / document.querySelector('.bb-bar').getBoundingClientRect().width);
+    const y = tr.y + tr.height / 2;
+    await page.mouse.move(tr.x + tr.width * .5, y); await page.mouse.down();
+    await page.mouse.move(tr.x + tr.width * .2, y, { steps: 6 });
+    ok('dragging the thumb toward A (left) makes you MORE sure of A', (await val()) >= 75 && (await val()) <= 85, String(await val()));
+    const wl = await widthA();
+    ok('and the A part of the bar gets bigger', wl > 0.7 && wl < 0.9, String(wl));
+    const thumbLeft = await page.evaluate(() => { const r = document.querySelector('.bb-thumb').getBoundingClientRect(), t = document.querySelector('.bb-track').getBoundingClientRect(); return (r.left + r.width / 2 - t.left) / t.width; });
+    ok('the thumb sits toward A\'s end', thumbLeft < 0.3, String(thumbLeft));
+    await page.mouse.move(tr.x + tr.width * .9, y, { steps: 6 }); await page.mouse.up();
+    ok('dragging toward B (right) makes you more sure of B', (await val()) <= 15, String(await val()));
+    ok('and the B part of the bar gets bigger', (await widthA()) < 0.2, String(await widthA()));
+    const before = await val();
+    await page.focus('.bb-track'); await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft');
+    ok('Left arrow moves toward A (more sure of A)', (await val()) === before + 10, `${before} -> ${await val()}`);
+    ok('belief bar: no page errors', errors.length === 0, errors.join('|'));
     await ctx.close();
   }
 

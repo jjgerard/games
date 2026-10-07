@@ -15,7 +15,7 @@ Every sub-level is something you move or draw, not a list of options. Nothing as
 | 3 | How many draws? | choose a sample size, run 20 people, see how they scatter |
 | 4 | Inside a group | tap the group you are inside (circles, squares, dotted or plain), then slide to a share; a different question each time |
 | 5 | Flip it | same, either way round; shows the two directions differ |
-| 6 | Which bag? | one draw, two kinds of bag; reveal is ten imagined draws per bag |
+| 6 | Which bag? | one draw, two kinds of bag; drag a thumb toward the kind you think it is, with a bar showing the split; reveal is ten imagined draws per bag |
 | 7 | More draws | drag shapes out of a closed bag and update your belief draw by draw |
 | 8 | Rare bags | a scarce kind of bag; base rate vs the obvious guess |
 | 9 | Many bags | spread ten chips over several possible bags |

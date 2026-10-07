@@ -224,3 +224,23 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
   .shelf.big svg { width: 30px; height: 33px; }
   .shelf.big { width: min(100%, 175px); gap: 3px 3px; }
 }
+
+/* ---- belief between two kinds of bag: a thumb track over a proportion bar ---- */
+.beliefbar { display: flex; flex-direction: column; gap: 4px; }
+.bb-track { position: relative; height: 38px; border-radius: 19px; border: 2px solid rgba(0,0,0,.15); touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none;
+  background: linear-gradient(90deg, rgba(122,81,149,.35), rgba(255,255,255,.5) 50%, rgba(217,165,20,.35)); }
+.bb-track:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.bb-end { position: absolute; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border-radius: 50%; font-weight: 800; font-size: .8rem; display: flex; align-items: center; justify-content: center; }
+.bb-end.A { left: 5px; background: var(--bagA); color: #fff; } .bb-end.B { right: 5px; background: var(--bagB); color: #2b2100; }
+.bb-thumb { position: absolute; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 800; pointer-events: none; }
+.bb-thumb.favA { border-color: var(--bagA); box-shadow: 0 0 0 3px rgba(122,81,149,.3); } .bb-thumb.favB { border-color: #a97e00; box-shadow: 0 0 0 3px rgba(217,165,20,.35); }
+.bb-bar { position: relative; display: flex; height: 30px; border-radius: 10px; overflow: hidden; border: 2px solid rgba(0,0,0,.15); }
+.bb-seg { height: 100%; display: flex; align-items: center; padding: 0 8px; font-weight: 800; font-size: .85rem; color: #fff; white-space: nowrap; overflow: hidden; }
+.bb-seg.bar-B { color: #2b2100; justify-content: flex-end; flex: 1; }
+.bb-ghost { position: absolute; top: -3px; bottom: -3px; width: 4px; margin-left: -2px; background: var(--good); border-radius: 2px; }
+.beliefbar.locked .bb-track { cursor: default; }
+
+.shelfrow { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.shelfrow .shelf.big { margin: 0; width: min(100%, 205px); }
+.drawnbox { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .75rem; font-weight: 800; color: var(--muted); }
+.drawnbox svg { width: 40px; height: 40px; animation: pop .3s ease-out; }

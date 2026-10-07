@@ -211,3 +211,63 @@ function BagDrawer({ nC = 5, nS = 5, seed = 1, size = 'lg', sealed = true, onDra
   peek.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !disabled) { e.preventDefault(); api.drawNow(); } });
   return api;
 }
+
+// ---------------------------------------------------------------------------
+// A belief between two kinds of bag, A (left) and B (right). Two parts, so
+// the direction you move matches what you mean:
+//   - a track with a thumb: drag TOWARD the kind you think it is
+//   - a bar underneath: how the 100% is split (the favoured kind gets more)
+// A single split bar can't do both, because its divider has to move INTO the
+// other side's territory to make your choice bigger. Same API as ShareBar;
+// value is the belief in A (0..1).
+// ---------------------------------------------------------------------------
+function BeliefBar({ value = 0.5, label = 'How sure it is kind A', onChange = () => {}, step = 0.05 }) {
+  const root = el('div', { class: 'beliefbar' });
+  const track = el('div', { class: 'bb-track', tabindex: 0, role: 'slider', 'aria-label': label, 'aria-valuemin': 0, 'aria-valuemax': 100 });
+  const endA = el('div', { class: 'bb-end A' }, 'A'), endB = el('div', { class: 'bb-end B' }, 'B');
+  const thumb = el('div', { class: 'bb-thumb' }, '↔');
+  track.append(endA, endB, thumb);
+  const segA = el('div', { class: 'bb-seg bar-A' }), segB = el('div', { class: 'bb-seg bar-B' });
+  const bar = el('div', { class: 'bb-bar' }, segA, segB);
+  root.append(track, bar);
+  let v = value, locked = false, touched = false;
+  const words = (t, share) => share >= .36 ? `${t} ${Math.round(share * 100)}%` : share >= .1 ? `${Math.round(share * 100)}%` : '';
+  const api = {
+    el: root,
+    get: () => v,
+    touched: () => touched,
+    set(x, fromUser = false) {
+      v = Math.round(BM.clamp(x, 0, 1) * 100) / 100;
+      if (fromUser) touched = true;
+      // thumb: the nearer to A's end, the surer of A (so 100% A is the far left)
+      thumb.style.left = `calc(${(1 - v) * 100}% )`;
+      thumb.className = 'bb-thumb' + (v > .5 ? ' favA' : v < .5 ? ' favB' : '');
+      segA.style.width = (v * 100) + '%'; segB.style.width = ((1 - v) * 100) + '%';
+      segA.textContent = words('A', v); segB.textContent = words('B', 1 - v);
+      track.setAttribute('aria-valuenow', Math.round(v * 100));
+      track.setAttribute('aria-valuetext', `${Math.round(v * 100)} percent sure it is kind A`);
+      onChange(v, fromUser);
+    },
+    lock() { locked = true; root.classList.add('locked'); track.tabIndex = -1; },
+    unlock() { locked = false; root.classList.remove('locked'); track.tabIndex = 0; },
+    ghost(x) {
+      bar.append(el('div', { class: 'sb-ghost', style: `left:${x * 100}%` }));
+      track.append(el('div', { class: 'bb-ghost', style: `left:${(1 - x) * 100}%` }));
+    },
+  };
+  const at = e => { const r = track.getBoundingClientRect(); api.set(1 - (e.clientX - r.left) / r.width, true); };
+  track.addEventListener('pointerdown', e => { if (locked) return; track.setPointerCapture(e.pointerId); track._drag = true; at(e); });
+  track.addEventListener('pointermove', e => { if (track._drag && !locked) at(e); });
+  const end = () => { track._drag = false; };
+  track.addEventListener('pointerup', end); track.addEventListener('pointercancel', end);
+  // Arrow keys follow the thumb: Left moves it toward A, which is MORE sure of A.
+  track.addEventListener('keydown', e => {
+    if (locked) return;
+    const d = { ArrowLeft: step, ArrowDown: step, ArrowRight: -step, ArrowUp: -step }[e.key];
+    if (d) { e.preventDefault(); api.set(v + d, true); }
+    else if (e.key === 'Home') { e.preventDefault(); api.set(1, true); }
+    else if (e.key === 'End') { e.preventDefault(); api.set(0, true); }
+  });
+  api.set(v);
+  return api;
+}

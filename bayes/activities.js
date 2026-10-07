@@ -245,17 +245,18 @@ function makeTwoBags(rng, rare) {
 function buildTwoBags(ctx, rare) {
   const rng = ctx.rng, q = makeTwoBags(rng, rare);
   const truth = BM.posteriorA(q.pA, q.pB, q.nA, q.nB, [q.shape]);
-  ctx.setPrompt(`A bag from the shelf gave <b>${iconWord(q.shape)}</b>. How sure are you it was kind <b>A</b>?`);
+  ctx.setPrompt(`A bag from the shelf gave <b>${iconWord(q.shape)}</b>. Drag toward the kind you think it was. The further, the surer.`);
   const bags = el('div', { class: 'bags-row big' },
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(q.pA), 10 - BM.circlesPerTen(q.pA), { seed: 11, badge: 'A', size: 120 }) }),
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(q.pB), 10 - BM.circlesPerTen(q.pB), { seed: 12, badge: 'B', size: 120 }) }));
   const shelf = Shelf(q.nA, q.nB);
   shelf.classList.add('big');
-  const drawn = el('div', { class: 'bigshape' }, 'Drawn:', shapeNode(q.shape, { size: 30 }));
-  const bar = ShareBar({ value: 0.5, leftText: 'A', rightText: 'B', leftClass: 'bar-A', rightClass: 'bar-B', label: 'How sure it is kind A' });
+  const drawn = el('div', { class: 'drawnbox' }, el('span', {}, 'Drawn'), shapeNode(q.shape, { size: 40 }));
+  const shelfRow = el('div', { class: 'shelfrow' }, shelf, drawn);
+  const bar = BeliefBar({ value: 0.5, label: 'How sure it is kind A' });
   const upd = () => ctx.setReady(bar.touched());
   bar.el.addEventListener('pointerup', upd); bar.el.addEventListener('keyup', upd);
-  ctx.stage.append(bags, shelf, drawn, bar.el);
+  ctx.stage.append(bags, shelfRow, bar.el);
   return {
     check() {
       const ok = Math.abs(bar.get() - truth) <= TOL_BELIEF + 1e-9;
@@ -264,7 +265,7 @@ function buildTwoBags(ctx, rare) {
       const msg = `Imagine ten draws from every bag on the shelf. ${c.fromA + c.fromB} of those draws show ${q.shape === 'c' ? 'a circle' : 'a square'}: ${c.fromA} from kind-A bags and ${c.fromB} from kind-B bags. So ${pct(truth)}% for A.`;
       return { correct: ok, message: ok ? `Yes. ${msg}` : `Not quite. ${msg}` };
     },
-    reveal() { bags.remove(); shelf.replaceWith(FreqGrid(q.pA, q.pB, q.nA, q.nB, q.shape)); },
+    reveal() { bags.remove(); shelfRow.replaceWith(FreqGrid(q.pA, q.pB, q.nA, q.nB, q.shape)); },
     solve() { bar.set(truth, true); upd(); },
     solveWrong() { bar.set(truth > 0.5 ? 0.04 : 0.96, true); upd(); },
   };
@@ -278,14 +279,14 @@ function buildSeveral(ctx) {
   const N = BM.int(rng, 2, 4), trueIsA = rng() < 0.5;
   const draws = Array.from({ length: N }, () => BM.drawShape(rng, trueIsA ? pA : pB));
   const truth = BM.posteriorA(pA, pB, 5, 5, draws);
-  ctx.setPrompt(`A bag, kind <b>A</b> or <b>B</b> (equally common), is picked. Drag ${N} shapes out one at a time. After each, slide to show how sure you are it is A.`);
+  ctx.setPrompt(`A bag, kind <b>A</b> or <b>B</b> (equally common), is picked. Drag ${N} shapes out one at a time. After each, drag toward the kind you think it is.`);
   const tray = Tray(); let k = 0;
   let drawer = null;
   const bags = el('div', { class: 'bags-row' },
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pA), 10 - BM.circlesPerTen(pA), { seed: 11, badge: 'A', size: 70 }) }),
     el('div', { class: 'bagbox' }),
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(pB), 10 - BM.circlesPerTen(pB), { seed: 12, badge: 'B', size: 70 }) }));
-  const bar = ShareBar({ value: 0.5, leftText: 'A', rightText: 'B', leftClass: 'bar-A', rightClass: 'bar-B', label: 'How sure it is kind A' });
+  const bar = BeliefBar({ value: 0.5, label: 'How sure it is kind A' });
   const left = el('div', { class: 'stage-note' }, `Drag ${N} shapes out of the closed bag`);
   const upd = () => ctx.setReady(k === N && bar.touched());
   function draw() {
@@ -391,9 +392,9 @@ const UNITS = [
       { id: 'u0-flip', name: 'Flip it', blurb: 'Not the same the other way.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildInside(ctx, true),
         help: 'Same as before, but the question can be either way round. Always tap the group you are picking from first.' },
       { id: 'u0-two', name: 'Which bag?', blurb: 'One draw, two kinds of bag.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildTwoBags(ctx, false),
-        help: 'A bag is picked at random from the shelf and one shape is drawn. Slide to show how sure you are it is kind A. After you check, you will see ten imagined draws from every bag.' },
+        help: 'A bag is picked at random from the shelf and one shape is drawn. Drag the thumb toward the kind you think it is: the closer to an end, the surer. The bar below shows the split. After you check, you will see ten imagined draws from every bag.' },
       { id: 'u0-several', name: 'More draws', blurb: 'Change your mind as you go.', kind: 'streak', target: 5, hearts: 2, build: buildSeveral,
-        help: 'Drag one shape at a time out of the closed bag and slide after each. A circle then a square can cancel out.' },
+        help: 'Drag one shape at a time out of the closed bag, and after each drag the thumb toward the kind you think it is. A circle then a square can cancel out.' },
       { id: 'u0-rare', name: 'Rare bags', blurb: 'Some bags are scarcer.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildTwoBags(ctx, true),
         help: 'Look at the shelf: one kind of bag is rare. The shape you see may point at the rare kind, but rare is still rare.' },
       { id: 'u0-chips', name: 'Many bags', blurb: 'Spread ten chips of belief.', kind: 'streak', target: 5, hearts: 2, build: buildChips,
