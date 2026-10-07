@@ -1,7 +1,33 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Learning Games</title><link rel="stylesheet" href="shared/style.css"></head><body><main>
-<h1>Learning Games</h1>
-<p class="muted">Learn by trial and error: poke at shapes, make guesses, see what the maths says.</p>
-<div class="card"><h3><a href="bayes/">Bag of Shapes</a> <small class="muted">· Bayesian statistics</small></h3>
-<p>A hidden bag of circles and squares. Draw shapes, update your beliefs, and bet on the true mix.</p></div>
-</main></body></html>
+<title>Bag of Shapes: learn stats and R by poking at it</title>
+<meta name="description" content="Short, visual browser games that teach Bayesian statistics, R and mixed-effects models from the very beginning. No sign-up, no typing, works on a phone.">
+<link rel="icon" href="shared/logo.svg"><link rel="stylesheet" href="shared/site.css"></head><body>
+<div class="wrap">
+<nav class="top" aria-label="Main"><a class="brand" href="./"><img src="shared/logo.svg" alt="" width="40" height="34"><span>Learning Games</span></a><a href="about.html">About</a></nav>
+<main>
+<section class="hero">
+  <div class="shapes" aria-hidden="true"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="#e4572e"/></svg><svg viewBox="0 0 44 44"><rect x="3" y="3" width="38" height="38" rx="8" fill="#2e86ab"/></svg><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="#e4572e"/></svg></div>
+  <h1>Learn statistics and R by poking at shapes.</h1>
+  <p>Short visual puzzles that start much earlier than other tools do. Drag, tap and guess, then see what the maths says. No account, no typing, no scrolling on a phone.</p>
+  <a class="cta" href="bayes/">Start with Bayes</a> <a class="cta alt" href="about.html">How it works</a>
+</section>
+
+<h2>The games</h2>
+<div class="games">
+  <a class="game" href="bayes/"><h3>Bag of Shapes <span class="tag">· Bayesian statistics</span></h3>
+    <p>A hidden bag of circles and squares. Draw, count, bet your belief, and watch it update. Starts at "what is a share?" and builds up to priors, posteriors and hierarchical models.</p><span class="go">Play →</span></a>
+  <a class="game" href="r/"><h3>R from zero <span class="tag">· Base R, then tidy R</span></h3>
+    <p>Build and read code by dragging tiles and following tables as they change. Part 1 is base R. Part 2 is the tidyverse, with the pipe as "and then".</p><span class="go">Play →</span></a>
+  <a class="game" href="models/"><h3>Models and scales <span class="tag">· Regression and mixed models</span></h3>
+    <p>Learn to read a model table: the scale you are on, what the intercept means, and what random effects do. R is only the tool, you do not type it.</p><span class="go">Play →</span></a>
+</div>
+
+<h2>What is different</h2>
+<ul class="points">
+  <li><b>Starts lower.</b>Each game begins before the textbook does, and a short placement test lets you skip what you know.</li>
+  <li><b>Visual, not quizzes.</b>You move things to answer. Words for ideas arrive after you have met the idea.</li>
+  <li><b>Small steps.</b>Five right in a row to finish a level. Two hearts. Nothing to calculate.</li>
+  <li><b>Yours alone.</b>Progress lives in your browser. Nothing is sent anywhere.</li>
+</ul>
+<footer>Open source under the MIT licence. <a href="about.html">About</a> · <a href="https://github.com/jjgerard/games">Source</a></footer>
+</main></div></body></html>

@@ -1,0 +1,33 @@
+:root{--bg:#f6f4ef;--ink:#262220;--muted:#5b554d;--panel:#fff;--line:#e3ded2;--circle:#e4572e;--square:#2e86ab;--accent:#3b3270;--accent-ink:#fff;--tint:#ece9f6;--circle-dark:#c4421b;--square-dark:#1f6f93}
+@media(prefers-color-scheme:dark){:root{--bg:#16151a;--ink:#f0eee8;--muted:#b5afa5;--panel:#201f26;--line:#34323c;--accent:#b9aef0;--accent-ink:#1b1830;--tint:#2b2840;--circle-dark:#f08a68;--square-dark:#6dbbdc}}
+*{box-sizing:border-box}
+html{font-size:17px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+a{color:var(--accent)}
+a:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px 40px}
+nav.top{display:flex;justify-content:space-between;align-items:center;padding:14px 0}
+nav.top a{min-height:44px;display:inline-flex;align-items:center;font-weight:700;text-decoration:none}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink)}
+.brand img{width:40px;height:34px}
+.hero{padding:18px 0 8px}
+.hero h1{font-size:2.1rem;line-height:1.15;margin:.2em 0 .3em;letter-spacing:-.02em}
+.hero p{font-size:1.15rem;color:var(--muted);margin:.3em 0 1em;max-width:34em}
+.shapes{display:flex;gap:10px;margin:6px 0 4px}
+.shapes svg{width:44px;height:44px}
+.cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-weight:700;text-decoration:none}
+.cta.alt{background:var(--tint);color:var(--accent)}
+h2{font-size:1.35rem;margin:1.6em 0 .5em}
+.games{display:grid;gap:14px}
+.game{display:block;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;text-decoration:none;color:var(--ink)}
+.game:hover{border-color:var(--accent)}
+.game h3{margin:0 0 2px;font-size:1.2rem}
+.game .tag{color:var(--muted);font-weight:600}
+.game p{margin:.4em 0 .6em}
+.game .go{color:var(--accent);font-weight:800}
+.soon{opacity:.85;border-style:dashed}
+.points{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.points li{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.points b{display:block}
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted)}
+.prose p,.prose li{max-width:36em}
