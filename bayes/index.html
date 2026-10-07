@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bag of Shapes</title>
+<link rel="stylesheet" href="style.css?v=1">
+<link rel="icon" href="logo.svg?v=1" type="image/svg+xml">
+<meta name="theme-color" content="#34306b">
+<!-- Same arrangement as Shapes and Trial and Error: enough to open from a
+     home screen, deliberately NO service worker, so nobody is stuck on a
+     stale copy. -->
+</head>
+<body>
+<div id="app">
+  <header id="app-header">
+    <button class="brand" id="brand" aria-label="Home">
+      <img src="logo.svg?v=1" alt="" class="brand-logo"><span class="brand-name">Bag of Shapes</span>
+    </button>
+    <div class="header-right">
+      <span id="points" class="points-pill hidden">0 pts</span>
+      <button id="btn-menu" class="btn-menu">☰ Menu</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="screen-home" class="screen">
+      <div class="hero">
+        <img src="logo.svg?v=1" alt="" class="hero-logo">
+        <h1 class="hero-name">Bag of Shapes</h1>
+        <p class="hero-tag">Solve puzzles with Bayesian statistics!</p>
+      </div>
+      <div class="card narrow">
+        <button id="btn-start" class="btn-primary btn-hero">Start from the beginning</button>
+        <button id="btn-continue" class="btn-primary btn-hero hidden">Continue</button>
+        <button id="btn-placement" class="btn-secondary btn-hero">I know some of this: find my level</button>
+        <p class="muted small">Nothing is graded or sent anywhere. Your progress is saved on this device only.</p>
+        <button class="link-btn" data-help="general">How does this work?</button>
+      </div>
+    </section>
+
+    <section id="screen-units" class="screen hidden">
+      <h1>Choose a unit</h1>
+      <div class="level-grid" id="unit-grid"></div>
+    </section>
+
+    <section id="screen-unit" class="screen hidden">
+      <button class="link-btn back-btn" data-back>&larr; Units</button>
+      <h1 id="unit-heading">Unit 0</h1>
+      <p class="muted" id="unit-intro"></p>
+      <div class="target-grid" id="sub-grid"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ ACTIVITY (every sub-level and the placement test) ============ -->
+<div id="quiz-overlay" class="overlay hidden">
+  <div class="editor">
+    <div class="editor-header">
+      <div id="quiz-title" class="editor-title">Activity</div>
+      <div class="editor-actions">
+        <button id="quiz-help" class="btn-icon" title="How to play" aria-label="How to play">?</button>
+        <button id="quiz-close" class="link-btn">&times; close</button>
+      </div>
+    </div>
+    <div class="quiz-body" id="quiz-body">
+      <div class="streak-bar-wrap" id="streak-wrap">
+        <div class="streak-bar"><div id="streak-fill" class="streak-bar-fill"></div></div>
+        <div id="streak-label" class="streak-label"></div>
+      </div>
+      <div id="quiz-prompt" class="quiz-prompt"></div>
+      <div id="stage" class="stage"></div>
+      <div id="quiz-feedback" class="quiz-feedback" role="status"></div>
+      <button id="quiz-action" class="btn-primary quiz-action" disabled>Check</button>
+    </div>
+  </div>
+</div>
+
+<div id="help-overlay" class="overlay overlay-dialog hidden">
+  <div class="dialog">
+    <h2 id="help-title">How to play</h2>
+    <div id="help-body" class="dialog-body"></div>
+    <div class="dialog-actions"><button id="help-close" class="btn-primary">Got it</button></div>
+  </div>
+</div>
+
+<div id="menu-overlay" class="overlay overlay-dialog hidden">
+  <div class="dialog">
+    <h2>Menu</h2>
+    <div class="menu-actions">
+      <button id="menu-sound" class="btn-secondary menu-item">🔊 Sound is on</button>
+      <button id="menu-help" class="btn-secondary menu-item">? How to play</button>
+      <button id="menu-about" class="btn-secondary menu-item">About this game</button>
+      <button id="menu-reset" class="btn-secondary menu-item">Start over (erase progress)</button>
+    </div>
+    <div class="dialog-actions"><button id="menu-close" class="btn-primary">Close</button></div>
+  </div>
+</div>
+
+<div id="confirm-overlay" class="overlay overlay-dialog hidden">
+  <div class="dialog">
+    <h2 id="confirm-title">Are you sure?</h2>
+    <p id="confirm-message" class="dialog-body"></p>
+    <div class="dialog-actions">
+      <button id="confirm-cancel" class="btn-secondary">No, go back</button>
+      <button id="confirm-ok" class="btn-primary">Yes</button>
+    </div>
+  </div>
+</div>
+
+<script src="sound.js?v=1"></script>
+<script src="streak.js?v=1"></script>
+<script src="math.js?v=1"></script>
+<script src="ui.js?v=1"></script>
+<script src="activities.js?v=1"></script>
+<script src="app.js?v=1"></script>
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister()));
+  if (window.caches) caches.keys().then(k => k.forEach(x => caches.delete(x)));
+</script>
+</body>
+</html>

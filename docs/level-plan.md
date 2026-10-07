@@ -1,6 +1,6 @@
 # Level plan (draft 2)
 
-Status: planning only; nothing below is built except the early Bag of Shapes prototype (to be rebuilt).
+Status: Game A (Bayes) Unit 0 is built in `bayes/` (see its README). Everything else below is still planning.
 Draft 2 replaces draft 1 after reading the Shapes build log, the Trial and Error chat, and the five FULL chats (glmer intercept, coding/simulation, Likert mixed model, tidy R, GitHub/sapply) plus the Introduction to R slides.
 
 ## Evidence base and its limits
