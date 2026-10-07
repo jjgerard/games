@@ -13,7 +13,7 @@ Every sub-level is something you move or draw, not a list of options. Nothing as
 | 1 | First slide | drag a divider along a bar (the only possible move) |
 | 2 | Share of circles | slide a divider to a share, from a visible bag or a tally |
 | 3 | How many draws? | choose a sample size, run 20 people, see how they scatter |
-| 4 | Just the circles | tap the group you are inside, then slide to a share |
+| 4 | Inside a group | tap the group you are inside (circles, squares, dotted or plain), then slide to a share; a different question each time |
 | 5 | Flip it | same, either way round; shows the two directions differ |
 | 6 | Which bag? | one draw, two kinds of bag; reveal is ten imagined draws per bag |
 | 7 | More draws | drag shapes out of a closed bag and update your belief draw by draw |

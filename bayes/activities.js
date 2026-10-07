@@ -132,38 +132,50 @@ function buildHowMany(ctx) {
 // for when joint probability arrives. Every group you could pick from has at
 // least three shapes, so a share is never a trivial one-of-one.
 const GRID_SIZE = 12;
-function makeCondGrid(rng, needFlip) {
-  for (let tries = 0; tries < 2000; tries++) {
-    const cd = BM.int(rng, 1, 6), cp = BM.int(rng, 1, 6), sd = BM.int(rng, 1, 6);
-    const sp = GRID_SIZE - cd - cp - sd; if (sp < 1 || sp > 6) continue;
-    if (Math.min(cd + cp, sd + sp, cd + sd, cp + sp) < 3) continue;
-    const pDotGivenC = cd / (cd + cp), pCGivenDot = cd / (cd + sd);
-    if (needFlip && Math.abs(pDotGivenC - pCGivenDot) < 0.25) continue;
-    return { cd, cp, sd, sp };
-  }
-  return { cd: 4, cp: 2, sd: 2, sp: 4 };
-}
 const GROUPS = {
   c: { label: 'circles', test: s => s.t === 'c' },
   s: { label: 'squares', test: s => s.t === 's' },
   d: { label: 'dotted', test: s => s.d },
   p: { label: 'plain', test: s => !s.d },
 };
+const GROUP_NAME = { c: 'circles', s: 'squares', d: 'dotted shapes', p: 'plain shapes' };   // "pick one from the ..."
+const WANT_PHRASE = { c: 'a circle', s: 'a square', d: 'dotted', p: 'plain' };            // "how likely is it ..."
+const WANT_NOUN = { c: 'circles', s: 'squares', d: 'dotted', p: 'plain' };               // "5 of 8 are ..."
+const WANT_LEFT = { c: 'Circles', s: 'Squares', d: 'Dotted', p: 'Plain' };
+const WANT_RIGHT = { c: 'Squares', s: 'Circles', d: 'Plain', p: 'Dotted' };
+
+// Which group to look inside, and which property of it to ask about. The
+// property is always from the OTHER attribute (inside the circles, ask about
+// dots; inside the dotted ones, ask about shape), so all eight combinations
+// come up, and the same one is never asked twice running.
+const COND_PAIRS = [['c', 'd'], ['c', 'p'], ['s', 'd'], ['s', 'p'], ['d', 'c'], ['d', 's'], ['p', 'c'], ['p', 's']];
+let lastCondPair = null;
+function pickCondPair(rng) {
+  const options = COND_PAIRS.filter(p => p.join() !== lastCondPair);
+  const pair = BM.pick(rng, options); lastCondPair = pair.join(); return pair;
+}
+// Cells: cd circle+dot, cp circle+plain, sd square+dot, sp square+plain.
+function makeCondGrid(rng, needFlip, [given, want]) {
+  for (let tries = 0; tries < 4000; tries++) {
+    const cd = BM.int(rng, 1, 6), cp = BM.int(rng, 1, 6), sd = BM.int(rng, 1, 6);
+    const sp = GRID_SIZE - cd - cp - sd; if (sp < 1 || sp > 6) continue;
+    if (Math.min(cd + cp, sd + sp, cd + sd, cp + sp) < 3) continue;
+    const items = [...Array(cd).fill({ t: 'c', d: true }), ...Array(cp).fill({ t: 'c', d: false }), ...Array(sd).fill({ t: 's', d: true }), ...Array(sp).fill({ t: 's', d: false })];
+    const g = items.filter(GROUPS[given].test), w = items.filter(GROUPS[want].test), both = g.filter(GROUPS[want].test).length;
+    if (needFlip && Math.abs(both / g.length - both / w.length) < 0.25) continue;
+    return { cd, cp, sd, sp };
+  }
+  return { cd: 4, cp: 2, sd: 2, sp: 4 };
+}
 function buildInside(ctx, flip) {
   const rng = ctx.rng;
-  const counts = makeCondGrid(rng, flip);
+  const [given, want] = pickCondPair(rng);
+  const counts = makeCondGrid(rng, flip, [given, want]);
   const items = BM.shuffle(rng, [
     ...Array(counts.cd).fill({ t: 'c', d: true }), ...Array(counts.cp).fill({ t: 'c', d: false }),
     ...Array(counts.sd).fill({ t: 's', d: true }), ...Array(counts.sp).fill({ t: 's', d: false })]);
-  // The question: pick from `given`, how likely is it `want`?
-  const shapeFirst = flip ? rng() < 0.5 : true;
-  const shapeKey = rng() < 0.5 ? 'c' : 's';
-  const given = shapeFirst ? shapeKey : 'd';     // group to look inside
-  const want = shapeFirst ? 'd' : shapeKey;      // property to measure
   const inGiven = items.filter(GROUPS[given].test), truth = inGiven.filter(GROUPS[want].test).length / inGiven.length;
-  const txt = k => k === 'd' ? 'dotted' : k === 'c' ? 'circles' : 'squares';
-  const nm = k => k === 'd' ? 'a dotted shape' : k === 'c' ? 'a circle' : 'a square';
-  ctx.setPrompt(`Pick one at random from the <b>${txt(given)}</b>. How likely is it to be <b>${nm(want)}</b>? First tap the group you are looking inside, then slide.`);
+  ctx.setPrompt(`Pick one at random from the <b>${GROUP_NAME[given]}</b>. How likely is it to be <b>${WANT_PHRASE[want]}</b>? First tap the group you are looking inside, then slide.`);
   const grid = el('div', { class: 'fgrid', role: 'img', 'aria-label': '12 shapes: circles and squares, some dotted' });
   const nodes = items.map(s => { const n = shapeNode(s.t, { size: 40, dot: s.d }); grid.append(n); return n; });
   let lens = null;
@@ -176,8 +188,7 @@ function buildInside(ctx, flip) {
     const b = el('button', { class: 'lensbtn', 'aria-pressed': 'false', onclick: () => pick(k) }, el('span', { html: icon }), GROUPS[k].label);
     lensBtns[k] = b; lensRow.append(b);
   }
-  const bar = ShareBar({ value: 0.5, leftText: want === 'd' ? 'Dotted' : want === 'c' ? 'Circles' : 'Squares',
-    rightText: want === 'd' ? 'Plain' : want === 'c' ? 'Squares' : 'Circles', leftClass: 'bar-acc', rightClass: 'bar-grey', label: 'Share' });
+  const bar = ShareBar({ value: 0.5, leftText: WANT_LEFT[want], rightText: WANT_RIGHT[want], leftClass: 'bar-acc', rightClass: 'bar-grey', label: 'Share' });
   function pick(k) {
     lens = k;
     for (const [kk, b] of Object.entries(lensBtns)) { b.classList.toggle('on', kk === k); b.setAttribute('aria-pressed', kk === k); }
@@ -187,23 +198,24 @@ function buildInside(ctx, flip) {
   const update = () => ctx.setReady(lens !== null && bar.touched());
   bar.el.addEventListener('pointerup', update); bar.el.addEventListener('keyup', update);
   ctx.stage.append(grid, lensRow, bar.el);
-  const fmt = (k, w) => `${items.filter(GROUPS[k].test).filter(GROUPS[w].test).length} of ${items.filter(GROUPS[k].test).length}`;
+  const fmt = (g, w) => `${items.filter(GROUPS[g].test).filter(GROUPS[w].test).length} of ${items.filter(GROUPS[g].test).length}`;
   return {
     check() {
       const lensOk = lens === given, shareOk = Math.abs(bar.get() - truth) <= TOL_SHARE + 1e-9;
       bar.lock(); bar.ghost(truth);
       if (!lensOk) { lensBtns[lens].classList.add('bad'); pick(given); }
-      let msg = `Inside the ${txt(given)}: ${fmt(given, want)} are ${txt(want)} (${pct(truth)}%).`;
+      let msg = `Inside the ${GROUP_NAME[given]}: ${fmt(given, want)} are ${WANT_NOUN[want]} (${pct(truth)}%).`;
       if (flip) {
-        const back = items.filter(GROUPS[want === 'd' ? 'd' : want].test);
+        const back = items.filter(GROUPS[want].test);
         const truthBack = back.filter(GROUPS[given].test).length / back.length;
-        msg += ` The other way round, inside the ${txt(want)}: ${pct(truthBack)}% are ${txt(given)}. Not the same!`;
+        msg += ` The other way round, inside the ${GROUP_NAME[want]}: ${pct(truthBack)}% are ${WANT_NOUN[given]}. Not the same!`;
       }
       const ok = lensOk && shareOk;
       return { correct: ok, message: ok ? `Yes. ${msg}` : (!lensOk ? `You looked inside the wrong group. ${msg}` : `Close, but not quite. ${msg}`) };
     },
     solve() { pick(given); bar.set(truth, true); update(); },
     solveWrong() { pick(given === 'c' ? 's' : 'c'); bar.set(truth, true); update(); },
+    pair: [given, want],
   };
 }
 
@@ -369,8 +381,8 @@ const UNITS = [
         help: 'Slide the divider to show what share of the shapes are circles. Sometimes you look at the bag; sometimes you drag shapes out of a closed bag and match your tally. Within one shape in ten counts as right.' },
       { id: 'u0-many', name: 'How many draws?', blurb: 'Fewer draws wobble more.', kind: 'streak', target: 5, hearts: 2, build: buildHowMany,
         help: 'Pick how many draws each person gets and press Run to see where twenty people land. Press Check when you think nearly everyone will land inside the green band.' },
-      { id: 'u0-inside', name: 'Just the circles', blurb: 'Look inside a group.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildInside(ctx, false),
-        help: 'First tap the group you are picking from (the others fade). Then slide to show what share of that group has the property.' },
+      { id: 'u0-inside', name: 'Inside a group', blurb: 'Look inside a group.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildInside(ctx, false),
+        help: 'First tap the group you are picking from (the others fade). Then slide to show what share of that group has the property. The group and the question change every time.' },
       { id: 'u0-flip', name: 'Flip it', blurb: 'Not the same the other way.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildInside(ctx, true),
         help: 'Same as before, but the question can be either way round. Always tap the group you are picking from first.' },
       { id: 'u0-two', name: 'Which bag?', blurb: 'One draw, two kinds of bag.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildTwoBags(ctx, false),

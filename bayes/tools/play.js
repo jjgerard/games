@@ -96,6 +96,31 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
+  // "Inside a group" varies: all eight (group, property) questions appear, never the same one twice running, and each fits.
+  for (const id of ['u0-inside', 'u0-flip']) {
+    const ctx = await browser.newContext({ viewport: { width: 320, height: 568 } });
+    const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(URL + '?seed=11'); await page.evaluate(() => localStorage.clear()); await page.reload();
+    await page.evaluate(id => { openActivity(UNITS[0].subs.find(s => s.id === id)); }, id);
+    const seen = new Set(); let repeats = 0, last = null, misfit = 0, bad = 0;
+    for (let i = 0; i < 70; i++) {
+      const pair = await page.evaluate(() => __run.ctrl.pair.join());
+      if (pair === last) repeats++; last = pair;
+      if (!seen.has(pair)) { seen.add(pair); const f = await fits(page); if (f.v > 1 || f.stage > 1 || f.over) misfit++; }
+      await page.evaluate(() => __run.ctrl.solve()); await page.click('#quiz-action');
+      if (!(await page.$eval('#quiz-feedback', e => e.className.includes('good')))) bad++;
+      const f2 = await fits(page); if (f2.v > 1 || f2.stage > 1 || f2.over) misfit++;
+      if (await page.evaluate(() => __run.finished)) await page.evaluate(id => { closeActivity(); openActivity(UNITS[0].subs.find(s => s.id === id)); }, id);
+      else await page.click('#quiz-action');
+    }
+    ok(`${id}: all 8 group/property questions appear`, seen.size === 8, [...seen].join(' '));
+    ok(`${id}: never the same question twice in a row`, repeats === 0, String(repeats));
+    ok(`${id}: every variant fits 320x568 (before and after checking)`, misfit === 0, String(misfit));
+    ok(`${id}: correct answers accepted for every variant`, bad === 0, String(bad));
+    ok(`${id}: no page errors`, errors.length === 0, errors.join('|'));
+    await ctx.close();
+  }
+
   // Drawing is a drag out of the bag, and the tile flashes until picked up.
   {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
