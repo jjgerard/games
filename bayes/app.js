@@ -77,8 +77,49 @@ function goHome() {
 function goUnits() { renderUnits(); showScreen('units'); updateHeader(); }
 
 // ---------------- dialogs ----------------
-function openOverlay(id) { $(id).classList.remove('hidden'); }
-function closeOverlay(id) { $(id).classList.add('hidden'); }
+// Modal behaviour: when a dialog opens, focus moves into it, everything behind
+// it is inert (so Tab and screen readers stay inside), Escape closes it, and
+// focus goes back to where it was when it closes.
+const focusStack = [];
+const openOverlays = () => [...document.querySelectorAll('.overlay')].filter(o => !o.classList.contains('hidden'));
+function syncInert() {
+  const open = openOverlays(), top = open[open.length - 1];
+  $('app').inert = open.length > 0;
+  document.querySelectorAll('.overlay').forEach(o => { o.inert = !!top && o !== top && !o.classList.contains('hidden'); });
+}
+function firstFocus(overlay) {
+  return overlay.querySelector('#stage .bigbtn:not(:disabled), #stage [role="slider"], #stage button:not(:disabled), #stage [tabindex="0"]') || overlay.querySelector('.dialog-actions .btn-primary, .btn-primary, button, [tabindex="0"]');
+}
+// Controls disable or disappear when you answer, which would drop keyboard focus
+// on the page. Always put it somewhere sensible instead: the next thing to press.
+function focusAction() { const b = $('quiz-action'); if (b && !b.disabled) b.focus(); }
+function focusQuestion() { setTimeout(() => { const f = firstFocus($('quiz-overlay')); if (f) f.focus(); }, 0); }
+function openOverlay(id) {
+  const o = $(id); focusStack.push({ id, from: document.activeElement });
+  o.classList.remove('hidden'); syncInert();
+  const f = id === 'quiz-overlay' ? $('quiz-close') : firstFocus(o);
+  if (f) setTimeout(() => f.focus(), 0);
+}
+function closeOverlay(id) {
+  const o = $(id); if (o.classList.contains('hidden')) return;
+  o.classList.add('hidden'); syncInert();
+  const i = focusStack.map(s => s.id).lastIndexOf(id);
+  if (i >= 0) { const { from } = focusStack.splice(i, 1)[0]; if (from && document.body.contains(from) && !from.closest('[inert]')) setTimeout(() => from.focus(), 0); }
+}
+document.addEventListener('keydown', e => {
+  const open = openOverlays(), top = open[open.length - 1]; if (!top) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (top.id === 'quiz-overlay') $('quiz-close').click();
+    else if (top.id === 'confirm-overlay') $('confirm-cancel').click();
+    else closeOverlay(top.id);
+  } else if (e.key === 'Tab') { // keep Tab inside the top dialog
+    const f = [...top.querySelectorAll('button:not(:disabled), [href], input, [role="slider"], [tabindex="0"]')].filter(x => x.offsetParent !== null && !x.closest('[inert]'));
+    if (!f.length) return; const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
 function showHelp(title, html) { $('help-title').textContent = title; $('help-body').innerHTML = html; openOverlay('help-overlay'); }
 const HELP = {
   general: `<p>Every puzzle is a picture you can move: draw shapes from bags, slide dividers, place chips.</p>
@@ -148,9 +189,9 @@ function nextQuestion() {
   const ctx = buildCtx(msg => {
     run.phase = 'review'; setFeedback(msg, 'good'); playCorrectSound();
     markDone(sub.id, true); setFeedback(`${msg} Sub-level complete: +${POINTS_SUB_COMPLETE} pts.`, 'good');
-    btn.textContent = 'Back to sub-levels'; btn.disabled = false; run.finished = true;
+    btn.textContent = 'Back to sub-levels'; btn.disabled = false; run.finished = true; focusAction();
   });
-  run.ctrl = sub.build(ctx);
+  run.ctrl = sub.build(ctx); focusQuestion();
 }
 $('quiz-action').onclick = () => {
   if (run.placement) return placementAction();
@@ -168,7 +209,7 @@ $('quiz-action').onclick = () => {
       setFeedback(`${r.message} Sub-level complete: +${POINTS_SUB_COMPLETE} pts!`, 'good'); playChimeSound();
       btn.textContent = 'Back to sub-levels';
     } else btn.textContent = res.forgiven ? 'Next (you have used a heart)' : 'Next';
-    btn.disabled = false;
+    btn.disabled = false; focusAction();
   } else if (run.phase === 'review') {
     if (run.finished) navBack(); else nextQuestion();
   }
@@ -186,14 +227,14 @@ function placementQuestion() {
   $('streak-wrap').classList.remove('hidden'); $('streak-fill').style.width = (P.i / PLACEMENT.length * 100) + '%';
   $('streak-label').textContent = `${P.i + 1} of ${PLACEMENT.length}`;
   const btn = $('quiz-action'); btn.textContent = 'Check'; btn.disabled = true;
-  run.ctrl = item.build(buildCtx(() => {}));
+  run.ctrl = item.build(buildCtx(() => {})); focusQuestion();
 }
 function placementAction() {
   const P = run.placement, item = PLACEMENT[P.i];
   if (run.phase === 'answering') {
     const r = run.ctrl.check(); P.results.push({ id: item.id, correct: r.correct });
     // No teaching here: show only that the answer was recorded.
-    run.phase = 'review'; setFeedback('Recorded.', ''); $('quiz-action').textContent = P.i === PLACEMENT.length - 1 ? 'See my level' : 'Next';
+    run.phase = 'review'; setFeedback('Recorded.', ''); $('quiz-action').textContent = P.i === PLACEMENT.length - 1 ? 'See my level' : 'Next'; focusAction();
   } else if (P.i < PLACEMENT.length - 1) { P.i++; placementQuestion(); } else placementResult();
 }
 function placementResult() {
@@ -209,7 +250,7 @@ function placementResult() {
     : `You got ${upTo} of ${PLACEMENT.length} right before the first miss. You will start at "${startSub.name}", and everything before it is marked as done.`),
     el('div', { class: 'stage-note' }, 'No points for skipped levels. You can replay any of them.'));
   setFeedback('');
-  const btn = $('quiz-action'); btn.textContent = 'Start here'; btn.disabled = false;
+  const btn = $('quiz-action'); btn.textContent = 'Start here'; btn.disabled = false; focusAction();
   run.placementDone = { unlocked };
 }
 const placementAfter = () => {

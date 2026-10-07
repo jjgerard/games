@@ -17,7 +17,7 @@ function randomShelf(rng, kinds = 4, total = 5) {
     if (c.filter(x => x > 0).length >= 2 && Math.max(...c) >= 2 && Math.max(...c) <= 3) return c;
   }
 }
-const headsFor = (counts, seedBase = 40, compact = false) => U1_PS.map((p, i) => KindHead(p, seedBase + i, counts ? counts[i] : null, compact));
+const kindsFor = (seedBase = 40) => U1_PS.map((p, i) => ({ p, seed: seedBase + i }));
 const drawsFrom = (rng, p, n) => Array.from({ length: n }, () => BM.drawShape(rng, p));
 
 // ---------------------------------------------------------------------------
@@ -25,14 +25,14 @@ const drawsFrom = (rng, p, n) => Array.from({ length: n }, () => BM.drawShape(rn
 // ---------------------------------------------------------------------------
 function buildPrior(ctx) {
   const rng = ctx.rng, counts = randomShelf(rng), expected = counts.map(c => c / 5 * 10);
-  ctx.setPrompt('The shelf holds 5 bags (the small bags under each kind). You pick one without looking. Bet your <b>10 chips</b> on its kind: more chips where the shelf has more.');
-  const panel = ChipsPanel({ heads: headsFor(counts), total: 10, onChange: c => ctx.setReady(sumOf(c) === 10) });
-  ctx.stage.append(panel.el);
+  ctx.setPrompt('One bag is picked from the shelf, unseen. Bet your <b>10 chips</b> on its kind.');
+  const panel = BagChips({ kinds: kindsFor(), total: 10, onChange: c => ctx.setReady(sumOf(c) === 10) });
+  ctx.stage.append(ShelfStrip(counts, U1_PS), panel.el, panel.status);
   return {
     check() {
-      const dev = l1(panel.chips, expected), ok = dev <= 2 + 1e-9; panel.showTruth(expected);
+      const dev = l1(panel.chips, expected), ok = dev <= 2 + 1e-9; panel.lock(expected);
       const top = U1_PS[counts.indexOf(Math.max(...counts))];
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Before any evidence, your belief should follow how common each kind is: the ${pct(top)}% kind fills ${Math.max(...counts)} of the 5 bags, so it gets ${Math.max(...expected)} of the 10 chips. This is called the prior.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Belief should follow the shelf: the ${pct(top)}% kind fills ${Math.max(...counts)} of 5 bags, so it gets ${Math.max(...expected)} of 10 chips. That is the prior.` };
     },
     solve() { panel.set(expected); },
     solveWrong() { const w = counts.indexOf(Math.min(...counts)); panel.set(counts.map((_, i) => i === w ? 10 : 0)); },
@@ -46,13 +46,13 @@ function buildPrior(ctx) {
 function buildLikelihood(ctx) {
   const rng = ctx.rng, shape = BM.pick(rng, ['c', 's']);
   const expected = U1_PS.map(p => shape === 'c' ? BM.circlesPerTen(p) : 10 - BM.circlesPerTen(p));
-  ctx.setPrompt(`This shape was drawn: <b>${iconWord(shape)}</b>. For each kind of bag, build a stack: out of 10 draws from that bag, how many would show this shape?`);
-  const panel = ChipsPanel({ heads: headsFor(null), total: null, perMax: 10, onChange: c => ctx.setReady(c.every(x => x >= 1)) });
-  ctx.stage.append(panel.el);
+  ctx.setPrompt(`Drawn: <b>${iconWord(shape)}</b>. Out of 10 draws from each bag, how many show it?`);
+  const panel = BagChips({ kinds: kindsFor(), total: null, perMax: 10, noun: 'draw', onChange: c => ctx.setReady(c.every(x => x >= 1)) });
+  ctx.stage.append(panel.el, panel.status);
   return {
     check() {
       const dev = l1(panel.chips, expected), ok = dev <= 2 + 1e-9 && panel.chips.every((c, i) => Math.abs(c - expected[i]) <= 1);
-      panel.showTruth(expected);
+      panel.lock(expected);
       const best = U1_PS[expected.indexOf(Math.max(...expected))], worst = U1_PS[expected.indexOf(Math.min(...expected))];
       return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}The ${shape === 'c' ? 'circle' : 'square'} turns up in ${Math.max(...expected)} of 10 draws from the ${pct(best)}% bag, but only ${Math.min(...expected)} of 10 from the ${pct(worst)}% bag. How well each kind explains what you saw is called the likelihood.` };
     },
@@ -76,13 +76,12 @@ function buildProduct(ctx) {
     if (l1(pieces.prior, pieces.post) >= 0.4 && l1(likShare, pieces.post) >= 0.4) break;
   }
   const expected = pieces.post.map(x => x * 10);
-  ctx.setPrompt(`You picked a bag from the shelf and drew ${n === 1 ? 'the shape' : 'the shapes'} shown. Now bet your <b>10 chips</b> on which kind of bag it is.`);
-  const tray = Tray(); draws.forEach(d => tray.add(d));
-  const panel = ChipsPanel({ heads: headsFor(counts), total: 10, onChange: c => ctx.setReady(sumOf(c) === 10) });
-  ctx.stage.append(el('div', { class: 'bigshape' }, 'Drawn:', tray.el), panel.el);
+  ctx.setPrompt(`A bag from the shelf gave <b>${draws.map(d => iconWord(d)).join(' ')}</b>. Bet your <b>10 chips</b> on its kind.`);
+  const panel = BagChips({ kinds: kindsFor(), total: 10, onChange: c => ctx.setReady(sumOf(c) === 10) });
+  ctx.stage.append(ShelfStrip(counts, U1_PS), panel.el, panel.status);
   return {
     check() {
-      const dev = l1(panel.chips, expected), ok = dev <= 3 + 1e-9; panel.showTruth(expected);
+      const dev = l1(panel.chips, expected), ok = dev <= 3 + 1e-9; panel.lock(expected);
       return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Belief now depends on BOTH: how common each kind is on the shelf, and how well it explains the draw. A common kind that explains the draw badly, or a rare kind that explains it well, can each lose out.` };
     },
     reveal() {
@@ -92,7 +91,7 @@ function buildProduct(ctx) {
         BarsRow(pieces.lik, { cls: 'lik', height: 30, caption: 'Likelihood: fits the draw' }),
         BarsRow(pieces.post, { cls: 'post', height: 30, caption: 'Posterior: both together' }),
         el('div', { class: 'barsline' }, el('span', { class: 'bcap' }), el('div', { class: 'barsrow', style: 'border:0;height:auto' }, U1_PS.map(p => el('div', { class: 'bcol stage-note', style: 'justify-content:center' }, pct(p) + '%')))));
-      panel.el.replaceWith(rows);
+      panel.el.replaceWith(rows); panel.status.remove();
     },
     solve() { panel.set(expected.map(Math.round).map((c, i, a) => (i === a.indexOf(Math.max(...a)) ? c + (10 - sumOf(a)) : c))); },
     solveWrong() { const w = pieces.post.indexOf(Math.min(...pieces.post)); panel.set(pieces.post.map((_, i) => i === w ? 10 : 0)); },
@@ -122,7 +121,7 @@ function buildNames(ctx) {
   ctx.setPrompt(`Which row is ${TERMS[ask]}? Tap it.`);
   const tray = Tray(); draws.forEach(d => tray.add(d));
   const kinds = el('div', { class: 'barsline' }, el('span', { class: 'rownum', style: 'visibility:hidden' }),
-    el('div', { class: 'barsrow', style: 'border:0;height:auto' }, headsFor(counts, 40, true).map(h => el('div', { class: 'bcol', style: 'justify-content:center;align-items:flex-start' }, h.node))));
+    el('div', { class: 'barsrow', style: 'border:0;height:auto' }, U1_PS.map((p, i) => el('div', { class: 'bcol', style: 'justify-content:center;align-items:flex-start' }, KindLabel(p, counts[i])))));
   let chosen = null; const btns = [];
   const rowEls = rows.map((r, i) => {
     const b = el('button', { class: 'rowpick', 'aria-label': `Row ${i + 1}`, onclick: () => { chosen = i; btns.forEach((x, j) => x.classList.toggle('on', j === i)); ctx.setReady(true); } },

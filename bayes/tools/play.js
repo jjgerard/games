@@ -314,6 +314,55 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
+  // Keyboard and dialogs: focus moves in, Tab stays inside, Escape closes and puts focus back; levels playable by keyboard alone.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(URL + '?seed=3'); await page.evaluate(() => localStorage.clear()); await page.reload();
+    await page.click('#btn-start');
+    const inside = sel => page.evaluate(sel => { const o = document.querySelector(sel); return o.contains(document.activeElement); }, sel);
+    await page.focus('#btn-menu'); await page.keyboard.press('Enter'); await page.waitForTimeout(50);
+    ok('menu: opening it moves focus inside', await inside('#menu-overlay'));
+    ok('menu: the page behind is inert', await page.evaluate(() => document.getElementById('app').inert));
+    let stayed = true; for (let i = 0; i < 12; i++) { await page.keyboard.press('Tab'); if (!(await inside('#menu-overlay'))) stayed = false; }
+    ok('menu: Tab never leaves the dialog', stayed);
+    stayed = true; for (let i = 0; i < 6; i++) { await page.keyboard.press('Shift+Tab'); if (!(await inside('#menu-overlay'))) stayed = false; }
+    ok('menu: Shift+Tab never leaves the dialog', stayed);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(50);
+    ok('menu: Escape closes it', await page.$eval('#menu-overlay', e => e.classList.contains('hidden')));
+    ok('menu: focus returns to the Menu button', await page.evaluate(() => document.activeElement && document.activeElement.id === 'btn-menu'));
+    ok('menu: the page is no longer inert', !(await page.evaluate(() => document.getElementById('app').inert)));
+    // help over an activity: Escape closes only the help, the activity stays
+    await page.evaluate(() => openActivity(UNITS[0].subs[0])); await page.waitForTimeout(50);
+    ok('activity: focus starts on the flashing Draw button', await page.evaluate(() => document.activeElement && document.activeElement.textContent.trim() === 'Draw'));
+    await page.click('#quiz-help'); await page.waitForTimeout(50);
+    ok('help over an activity: focus inside the help, activity behind it inert', await inside('#help-overlay') && await page.evaluate(() => document.getElementById('quiz-overlay').inert));
+    await page.keyboard.press('Escape'); await page.waitForTimeout(50);
+    ok('Escape closes the help but not the activity', await page.$eval('#help-overlay', e => e.classList.contains('hidden')) && !(await page.$eval('#quiz-overlay', e => e.classList.contains('hidden'))));
+    ok('activity is usable again after the help closes', !(await page.evaluate(() => document.getElementById('quiz-overlay').inert)));
+    // keyboard-only: Enter on Draw completes the tutorial, focus lands on the next button, Enter returns
+    await page.focus('#stage .bigbtn'); await page.keyboard.press('Enter'); await page.waitForTimeout(50);
+    ok('keyboard: Enter on Draw completes the sub-level', await page.evaluate(() => __run.finished));
+    ok('keyboard: focus moves to "Back to sub-levels" (not lost)', await page.evaluate(() => document.activeElement && document.activeElement.id === 'quiz-action'));
+    await page.keyboard.press('Enter'); await page.waitForTimeout(80);
+    ok('keyboard: Enter on the button closes the activity', await page.$eval('#quiz-overlay', e => e.classList.contains('hidden')));
+    // keyboard-only chips: Enter on each bag adds a chip; announced count; Check by keyboard
+    await page.evaluate(() => openActivity(UNITS[1].subs.find(s => s.id === 'u1-prior'))); await page.waitForSelector('.bagbtn'); await page.waitForTimeout(50);
+    ok('chips: focus starts on a bag', await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('bagbtn')));
+    const bags = await page.$$('.bagbtn');
+    for (let i = 0; i < 10; i++) { await bags[i % 4].focus(); await page.keyboard.press('Enter'); }
+    ok('chips: Enter on bags places all 10 chips and says so', /All 10 chips placed/.test(await page.textContent('.chipstatus')));
+    ok('chips: each bag button says how many chips are on it', /\d+ chips? on it/.test(await bags[0].getAttribute('aria-label')), await bags[0].getAttribute('aria-label'));
+    await page.focus('#quiz-action'); await page.keyboard.press('Enter'); await page.waitForTimeout(50);
+    ok('chips: Check by keyboard gives feedback and focus stays on the next button', (await page.textContent('#quiz-feedback')).length > 10 && await page.evaluate(() => document.activeElement && document.activeElement.id === 'quiz-action'));
+    // a drag control is operable by keyboard too
+    await page.evaluate(() => { closeActivity(); openActivity(UNITS[0].subs.find(s => s.id === 'u0-two')); }); await page.waitForSelector('.bb-track');
+    await page.focus('.bb-track'); await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft');
+    ok('belief bar: keyboard moves it and the value is announced', (await page.getAttribute('.bb-track', 'aria-valuenow')) === '60' && /percent sure/.test(await page.getAttribute('.bb-track', 'aria-valuetext')));
+    ok('keyboard tests: no page errors', errors.length === 0, errors.join('|'));
+    await ctx.close();
+  }
+
   // Placement: all right, then a miss on the third.
   for (const plan of ['allright', 'missthird']) {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });

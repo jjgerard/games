@@ -17,7 +17,7 @@ Every sub-level is something you move or draw, not a list of options. Nothing as
 | 5 | Which bag? | one draw, two equally common kinds of bag; drag a thumb toward the kind you think it is, with a bar showing the split; reveal is ten imagined draws per kind |
 | 6 | More draws | tap Draw on a hidden bag (one of the two shown) and update your belief draw by draw |
 | 7 | Rare bags | the same, but one kind is scarce on a shelf of four or five bags |
-| 8 | Many bags | spread ten chips over several possible bags |
+| 8 | Many bags | tap the big bags to spread ten chips over four possible bags (2×2) |
 
 ## What is in Unit 1
 The three pieces of a Bayesian update, built by hand before they are named (the names arrive in the explanation afterwards).
@@ -49,6 +49,7 @@ python3 -m http.server 8123 &
 NODE_PATH=/opt/node22/lib/node_modules node tools/play.js        # plays every sub-level at 3 phone sizes
 node tools/check-math.js | Rscript tools/check-math.R              # checks math.js against R (posteriors, Beta curves, quantiles)
 NODE_PATH=/opt/node22/lib/node_modules node tools/stress.js 60    # 60 random questions per sub-level on a 320x568 phone: fit, right answers accepted, wrong refused
+NODE_PATH=/opt/node22/lib/node_modules node tools/audit.js        # accessibility audit: targets >=44px (36 on small phones), bag pictures >=80px, contrast, text alternatives, dialogs, focus
 NODE_PATH=/opt/node22/lib/node_modules node tools/naive.js        # how often tempting wrong strategies would be accepted
 ```
 `tools/play.js` uses each activity's `solve()`/`solveWrong()` to set the answer through the same component code the pointer uses, and separately tests a real pointer drag and arrow keys. `?seed=123` in the URL makes a run repeatable.

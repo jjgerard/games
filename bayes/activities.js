@@ -98,7 +98,7 @@ const HOWMANY = [
 ];
 function buildHowMany(ctx) {
   const rng = ctx.rng, cfg = BM.pick(rng, HOWMANY), PLAYERS = 20, NEED = 0.95;
-  ctx.setPrompt(`Twenty people each draw some shapes from a bag that is <b>${pct(cfg.p)}% circles</b> and report their share. Choose how many draws each person gets, so nearly everyone lands in the <b>green band</b>.`);
+  ctx.setPrompt(`20 people each draw from a bag that is <b>${pct(cfg.p)}% circles</b> and report their share. How many draws each puts nearly everyone in the <b>green band</b>?`);
   const strip = el('div', { class: 'dotstrip', role: 'img', 'aria-label': 'Where twenty people\'s shares landed' });
   const band = el('div', { class: 'band', style: `left:${(cfg.p - cfg.band) * 100}%;width:${cfg.band * 200}%` });
   strip.append(band, el('div', { class: 'truth', style: `left:${cfg.p * 100}%` }));
@@ -188,7 +188,7 @@ function buildInside(ctx, flip) {
     ...Array(counts.sd).fill({ t: 's', d: true }), ...Array(counts.sp).fill({ t: 's', d: false })]);
   const inGiven = items.filter(GROUPS[given].test), truth = inGiven.filter(GROUPS[want].test).length / inGiven.length;
   ctx.setPrompt(`Pick one at random from the <b>${GROUP_NAME[given]}</b>. How likely is it to be <b>${WANT_PHRASE[want]}</b>? First tap the group you are looking inside, then slide.`);
-  const grid = el('div', { class: 'fgrid', role: 'img', 'aria-label': '12 shapes: circles and squares, some dotted' });
+  const grid = el('div', { class: 'fgrid', role: 'img', 'aria-label': `12 shapes. Circles: ${counts.cd} dotted and ${counts.cp} plain. Squares: ${counts.sd} dotted and ${counts.sp} plain.` });
   const nodes = items.map(s => { const n = shapeNode(s.t, { size: 40, dot: s.d }); grid.append(n); return n; });
   let lens = null;
   const lensBtns = {};
@@ -301,7 +301,7 @@ function buildSeveral(ctx) {
   const N = BM.int(rng, 2, 4), trueIsA = rng() < 0.5;
   const draws = Array.from({ length: N }, () => BM.drawShape(rng, trueIsA ? pA : pB));
   const truth = BM.posteriorA(pA, pB, 5, 5, draws);
-  ctx.setPrompt(`A bag, kind <b>A</b> or <b>B</b> (equally common), is picked. Draw ${N} shapes one at a time. After each, drag toward the kind you think it is.`);
+  ctx.setPrompt(`One of these two bags is picked, unseen. Draw ${N} shapes; after each, drag toward the kind you think it is.`);
   const tray = Tray(); let k = 0;
   // The same two big bags as in "Which bag?"; the one you draw from is hidden, and is one of these.
   const bags = el('div', { class: 'bags-row big' },
@@ -345,22 +345,22 @@ function buildSeveral(ctx) {
 // ---------------------------------------------------------------------------
 function buildChips(ctx) {
   const rng = ctx.rng;
-  const ps = [0.2, 0.4, 0.6, 0.8]; // four kinds of bag, in a 2x2 grid with room for big pictures and buttons
+  const ps = [0.2, 0.4, 0.6, 0.8]; // four kinds of bag, in a 2x2 grid of full-size bags
   const N = BM.int(rng, 1, 3), trueP = BM.pick(rng, ps);
   const draws = Array.from({ length: N }, () => BM.drawShape(rng, trueP));
   const k = draws.filter(d => d === 'c').length;
   const post = BM.gridPosterior(ps, k, N).map(x => x * 10);
-  ctx.setPrompt('Spread your <b>10 chips</b> over the kinds of bag that could have made these shapes.');
-  const tray = Tray(); draws.forEach(d => tray.add(d));
-  const panel = ChipsPanel({ grid: true, total: 10, heads: ps.map((p, i) => KindHead(p, 20 + i)), onChange: c => ctx.setReady(sumOf(c) === 10) });
-  ctx.stage.append(el('div', { class: 'bigshape' }, 'Drawn:', tray.el), panel.el);
+  // the drawn shapes sit inside the sentence, so no row of their own is needed
+  ctx.setPrompt(`Drawn: <b>${draws.map(d => iconWord(d)).join(' ')}</b>. Spread 10 chips over the bags that could have made them.`);
+  const panel = BagChips({ total: 10, kinds: ps.map((p, i) => ({ p, seed: 20 + i })), onChange: c => ctx.setReady(sumOf(c) === 10) });
+  ctx.stage.append(panel.el, panel.status);
   const dev = () => panel.chips.reduce((a, c, i) => a + Math.abs(c - post[i]), 0);
   return {
     check() {
       const ok = dev() <= 3 + 1e-9;
-      panel.lock(); panel.showTruth(post);
+      panel.lock(post);
       const best = ps[post.indexOf(Math.max(...post))];
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}You saw ${k} circle${k === 1 ? '' : 's'} in ${N} draw${N === 1 ? '' : 's'}. The green dots show where belief belongs: most on the ${pct(best)}% bag, and some on every kind that could still have made this.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}You saw ${k} circle${k === 1 ? '' : 's'} in ${N} draw${N === 1 ? '' : 's'}. Most of your belief belongs on the ${pct(best)}% bag, with some on every kind that could still have made this.` };
     },
     solve() { const r = post.map(Math.round); const diff = 10 - sumOf(r); r[r.indexOf(Math.max(...r))] += diff; panel.set(r.map(c => Math.max(0, c))); },
     solveWrong() { const worst = post.indexOf(Math.min(...post)); panel.set(post.map((_, i) => i === worst ? 10 : 0)); },
