@@ -25,14 +25,14 @@ const drawsFrom = (rng, p, n) => Array.from({ length: n }, () => BM.drawShape(rn
 // ---------------------------------------------------------------------------
 function buildPrior(ctx) {
   const rng = ctx.rng, counts = randomShelf(rng), expected = counts.map(c => c / 5 * 10);
-  ctx.setPrompt('One bag is picked from the shelf, unseen. Bet your <b>10 chips</b> on its kind.');
+  ctx.setPrompt('Eyes shut, you pick one bag off the shelf. Which kind? Put your <b>10 chips</b> on the likely kinds.');
   const panel = BagChips({ kinds: kindsFor(), total: 10, onChange: c => ctx.setReady(sumOf(c) === 10) });
   ctx.stage.append(ShelfStrip(counts, U1_PS), panel.el, panel.status);
   return {
     check() {
       const dev = l1(panel.chips, expected), ok = dev <= 2 + 1e-9; panel.lock(expected);
       const top = U1_PS[counts.indexOf(Math.max(...counts))];
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Belief should follow the shelf: the ${pct(top)}% kind fills ${Math.max(...counts)} of 5 bags, so it gets ${Math.max(...expected)} of 10 chips. That is the prior.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Belief follows the shelf: the ${pct(top)}% kind is ${Math.max(...counts)} of 5 bags, so it gets ${Math.max(...expected)} of 10 chips: the prior.` };
     },
     solve() { panel.set(expected); },
     solveWrong() { const w = counts.indexOf(Math.min(...counts)); panel.set(counts.map((_, i) => i === w ? 10 : 0)); },
@@ -185,8 +185,8 @@ function buildImagine(ctx) {
     check() {
       const dm = Math.abs(BM.betaMean(kit.a, kit.b) - BM.betaMean(ta, tb)), ds = Math.abs(kit.a + kit.b - (ta + tb)), ok = dm <= 0.06 && ds <= 2;
       let why = '';
-      if (!ok) why = dm > 0.06 ? ' Your curve leans the wrong amount: more circles pull it right, more squares pull it left.' : ' Your curve is the wrong width: more imagined shapes make it narrower, because you are surer.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}The target was ${ta} imagined circles and ${tb} imagined squares. The more shapes you imagine, the narrower the curve: a surer belief.` };
+      if (!ok) why = dm > 0.06 ? ' It leans the wrong way: circles pull it right, squares left.' : ' Wrong width: more shapes, narrower curve.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}Target: ${ta} circles, ${tb} squares. More imagined shapes, narrower curve: a surer belief.` };
     },
     solve() { kit.set(ta, tb); },
     solveWrong() { kit.set(tb, ta); },
@@ -254,7 +254,7 @@ UNITS[1] = {
   intro: 'The three pieces of every Bayesian update. You will build each one yourself before it gets a name.',
   subs: [
     { id: 'u1-prior', name: 'Before the draw', blurb: 'Belief follows the shelf.', kind: 'streak', target: 5, hearts: 2, build: buildPrior,
-      help: 'There are four kinds of bag, shown by how many circles they hold. The small bags under each kind show how many of the five bags on the shelf are that kind. You pick one at random, without looking inside. Use + and − to bet your 10 chips on which kind it is: the more of the shelf a kind fills, the more chips it should get. For example, a kind that is 2 of the 5 bags should get 4 of the 10 chips.' },
+      help: 'The row at the top is the shelf: five bags, each labelled with the share of circles inside it. Below are the four kinds of bag. You close your eyes and take one bag off the shelf, so nothing has been drawn yet. Which kind is it likely to be? Tap a kind to put a chip on it, and spread all 10 chips: the more of the shelf a kind fills, the more chips it deserves. For example, a kind that is 2 of the 5 bags gets 4 of the 10 chips.' },
     { id: 'u1-lik', name: 'What fits the draw?', blurb: 'How well each bag explains it.', kind: 'streak', target: 5, hearts: 2, build: buildLikelihood,
       help: 'For each kind of bag, build a stack showing how many of 10 draws from that bag would show the shape. Count the matching shapes in the picture.' },
     { id: 'u1-product', name: 'Put them together', blurb: 'The shelf and the draw.', kind: 'streak', target: 5, hearts: 2, build: buildProduct,

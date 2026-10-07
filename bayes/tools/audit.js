@@ -8,6 +8,7 @@
 //            24x24 AA minimum anywhere.
 //  pictures  a bag that you must read is at least 80px wide (64px on the 320 phone); the shapes inside it, which
 //            you count, are at least 9px across (8px on the 320 phone); grid shapes at least 34px.
+//  fonts     no text (in pictures too) smaller than the question text, 17px.
 //  contrast  text 4.5:1 (3:1 for large or bold-large text); decorative/disabled text exempt.
 //  names     every control has an accessible name; every informative graphic has a text alternative.
 //  focus     every keyboard-focusable control shows a visible focus indicator.
@@ -17,7 +18,7 @@ const SIZES = [[360, 640], [320, 568], [414, 800]];
 const URL = 'http://localhost:8123/index.html?seed=31';
 
 const inPage = () => {
-  const out = { targets: [], pictures: [], contrast: [], names: [], graphics: [] };
+  const out = { targets: [], pictures: [], contrast: [], names: [], graphics: [], fonts: [] };
   const scope = (() => { const o = [...document.querySelectorAll('.overlay')].filter(x => !x.classList.contains('hidden')); return o.length ? o[o.length - 1] : document.body; })();
   const shown = e => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && !e.closest('[aria-hidden="true"]') && !e.closest('.hidden'); };
   const sig = e => { let s = e.tagName.toLowerCase(); const c = (e.getAttribute('class') || '').split(/\s+/).filter(Boolean).filter(x => !/^(on|off|bad|right|locked|done|flash|pulse)$/.test(x)); if (c.length) s += '.' + c.slice(0, 2).join('.'); const p = e.closest('[id]'); return s + (p && p !== e ? ` in #${p.id}` : ''); };
@@ -52,6 +53,15 @@ const inPage = () => {
     if (!shown(e) || !e.children.length) continue;
     const has = e.getAttribute('aria-label') || (e.textContent || '').trim() || e.querySelector('.sr-only') || e.querySelector('[role="img"][aria-label]') || e.querySelector('[aria-label]') || e.closest('[aria-label]') || e.closest('button');
     if (!has) out.graphics.push({ sig: sig(e), what: 'shows information with no text alternative' });
+  }
+  // ---- fonts: no text smaller than the question text (17px), including text drawn inside pictures
+  const FONT_MIN = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const fseen = new Set();
+  for (const t of (() => { const a = [], w = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT); for (let n; (n = w.nextNode());) if (n.textContent.trim()) a.push(n); return a; })()) {
+    const e = t.parentElement; if (!e || !shown(e) || e.closest('.sr-only') || e.closest('button:disabled')) continue;
+    let px = parseFloat(getComputedStyle(e).fontSize);
+    const svg = e.closest('svg'); if (svg && e instanceof SVGElement) { const m = e.getScreenCTM(); if (m) px *= Math.hypot(m.a, m.b); }
+    px = Math.round(px * 10) / 10; if (px < FONT_MIN - 0.05) { const k = sig(e) + px; if (!fseen.has(k)) { fseen.add(k); out.fonts.push({ sig: sig(e), text: t.textContent.trim().slice(0, 20), px, min: FONT_MIN }); } }
   }
   // ---- contrast
   const parse = c => { const m = c.match(/[\d.]+/g).map(Number); return { r: m[0], g: m[1], b: m[2], a: m[3] == null ? 1 : m[3] }; };
@@ -98,6 +108,7 @@ const inPage = () => {
         else if (p.kind === 'tray' && p.w < 20) add('PICTURE', p.sig, `${p.w}px`, tag + ' ' + label);
       }
       for (const c of r.contrast) add('CONTRAST', c.sig, `"${c.text}" ${c.ratio}:1 (need ${c.need}, ${c.px}px)`, tag + ' ' + label);
+      for (const f of r.fonts) add('FONT', f.sig, `"${f.text}" ${f.px}px (need ${f.min})`, tag + ' ' + label);
       for (const n of r.names) add('NAME', n.sig, n.what, tag + ' ' + label);
       for (const g of r.graphics) add('ALT', g.sig, g.what, tag + ' ' + label);
       // keyboard focus: Tab through the open overlay (or page) and check each stop shows an indicator
@@ -133,7 +144,7 @@ const inPage = () => {
     await page.context().close();
   }
   await browser.close();
-  const order = ['ERROR', 'TARGET<24', 'TARGET<36', 'TARGET<44', 'PICTURE', 'CONTRAST', 'NAME', 'ALT', 'DIALOG', 'FOCUS'];
+  const order = ['ERROR', 'TARGET<24', 'TARGET<36', 'TARGET<44', 'PICTURE', 'FONT', 'CONTRAST', 'NAME', 'ALT', 'DIALOG', 'FOCUS'];
   const list = [...findings.values()].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.sig.localeCompare(b.sig));
   console.log(`${states} states measured at ${SIZES.map(s => s.join('x')).join(', ')}`);
   const byKind = {}; for (const f of list) byKind[f.kind] = (byKind[f.kind] || 0) + 1;

@@ -57,20 +57,22 @@
 <div id="quiz-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quiz-title">
   <div class="editor">
     <div class="editor-header">
-      <div id="quiz-title" class="editor-title">Activity</div>
+      <div id="quiz-title" class="editor-title sr-only">Activity</div>
+      <div class="streak-bar-wrap" id="streak-wrap">
+        <div class="streak-bar"><div id="streak-fill" class="streak-bar-fill"></div></div>
+        <div id="streak-label" class="streak-label"></div>
+      </div>
       <div class="editor-actions">
         <button id="quiz-help" class="btn-icon" title="How to play" aria-label="How to play">?</button>
         <button id="quiz-close" class="link-btn">&times; close</button>
       </div>
     </div>
     <div class="quiz-body" id="quiz-body">
-      <div class="streak-bar-wrap" id="streak-wrap">
-        <div class="streak-bar"><div id="streak-fill" class="streak-bar-fill"></div></div>
-        <div id="streak-label" class="streak-label"></div>
+      <div class="qslot">
+        <div id="quiz-prompt" class="quiz-prompt" aria-live="polite"></div>
+        <div id="quiz-feedback" class="quiz-feedback" role="status"></div>
       </div>
-      <div id="quiz-prompt" class="quiz-prompt" aria-live="polite"></div>
       <div id="stage" class="stage"></div>
-      <div id="quiz-feedback" class="quiz-feedback" role="status"></div>
       <button id="quiz-action" class="btn-primary quiz-action" disabled>Check</button>
     </div>
   </div>

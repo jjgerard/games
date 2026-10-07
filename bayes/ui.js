@@ -53,7 +53,7 @@ function bagSVG(nC, nS, { seed = 1, badge = null, sealed = false, size = 160 } =
     });
   }
   const b = badge
-    ? `<circle class="badge${badge}" cx="130" cy="42" r="15"/><text x="130" y="48" text-anchor="middle" class="baglabel" fill="${badge === 'B' ? '#2b2100' : '#fff'}">${badge}</text>` : '';
+    ? `<circle class="badge${badge}" cx="128" cy="40" r="21"/><text x="128" y="49" text-anchor="middle" class="baglabel" fill="${badge === 'B' ? '#2b2100' : '#fff'}">${badge}</text>` : '';
   const sz = size >= 200 ? 'xl' : size >= 170 ? 'lg' : size >= 110 ? 'md' : 'sm'; // sized in CSS so it can shrink on short screens
   const desc = sealed ? 'Closed bag' : `Bag with ${nC} circle${nC === 1 ? '' : 's'} and ${nS} square${nS === 1 ? '' : 's'}`;
   return `<svg class="bag-${sz}" viewBox="0 0 160 150" role="img" aria-label="${desc}${badge ? ', kind ' + badge : ''}">
@@ -63,16 +63,16 @@ function bagSVG(nC, nS, { seed = 1, badge = null, sealed = false, size = 160 } =
 }
 // A small sealed bag, as on the shelf.
 function miniBag(badge) {
-  return `<svg viewBox="0 0 40 44" aria-label="bag ${badge}"><rect class="bagbody" x="3" y="12" width="34" height="30" rx="9"/>
-    <path class="bagbody" d="M12 13 Q20 3 28 13 Z"/><rect class="bagtie" x="14" y="10" width="12" height="3" rx="1.5"/>
-    ${badge ? `<circle class="badge${badge}" cx="20" cy="28" r="9"/><text x="20" y="32" text-anchor="middle" font-size="11" font-weight="800" fill="${badge === 'B' ? '#2b2100' : '#fff'}">${badge}</text>` : ''}</svg>`;
+  return `<svg viewBox="0 0 44 46" aria-label="bag ${badge}"><rect class="bagbody" x="2" y="13" width="40" height="31" rx="10"/>
+    <path class="bagbody" d="M12 14 Q22 3 32 14 Z"/><rect class="bagtie" x="14" y="11" width="16" height="3" rx="1.5"/>
+    ${badge ? `<circle class="badge${badge}" cx="22" cy="29" r="12"/><text x="22" y="35" text-anchor="middle" font-size="17" font-weight="800" fill="${badge === 'B' ? '#2b2100' : '#fff'}">${badge}</text>` : ''}</svg>`;
 }
 
 // A small sealed bag with a kind written on it, for shelf strips.
 function miniKindBag(text) {
-  return `<svg viewBox="0 0 40 44" role="img" aria-label="bag: ${text} circles"><rect class="bagbody" x="3" y="12" width="34" height="30" rx="9"/>
-    <path class="bagbody" d="M12 13 Q20 3 28 13 Z"/><rect class="bagtie" x="14" y="10" width="12" height="3" rx="1.5"/>
-    <text x="20" y="32" text-anchor="middle" font-size="12" font-weight="800" fill="#262220">${text}</text></svg>`;
+  return `<svg viewBox="0 0 54 54" role="img" aria-label="bag: ${text} circles"><rect class="bagbody" x="2" y="16" width="50" height="36" rx="12"/>
+    <path class="bagbody" d="M15 17 Q27 3 39 17 Z"/><rect class="bagtie" x="19" y="13" width="16" height="4" rx="2"/>
+    <text x="27" y="40" text-anchor="middle" font-size="17" font-weight="800" fill="#262220">${text}</text></svg>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ function BarsRow(values, { cls = '', height = 34, caption = '' } = {}) {
 // Beta(a, b), and optionally a dashed target, a faint starting curve, a
 // shaded middle section and vertical markers. Redrawn on every update().
 function CurveView({ a = 1, b = 1, height = 112 } = {}) {
-  const W = 300, H = height, L = 10, R = 10, T = 8, B = 18;
+  const W = 300, H = height, L = 14, R = 14, T = 8, B = 26;
   const root = el('div', { class: 'curveview', role: 'img' });
   const st = { a, b, target: null, ghost: null, shade: null, markers: [] };
   const xOf = x => L + x * (W - L - R);
@@ -351,7 +351,7 @@ function CurveView({ a = 1, b = 1, height = 112 } = {}) {
       s += `<path d="${path([st.a, st.b], ymax)}" class="cv-line"/>`;
       for (const m of st.markers) s += `<line x1="${xOf(m.x)}" x2="${xOf(m.x)}" y1="${T}" y2="${H - B}" class="cv-mark ${m.cls || ''}"/>`;
       s += `<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" class="cv-axis"/>`;
-      for (const t of [0, .5, 1]) s += `<text x="${xOf(t)}" y="${H - 4}" text-anchor="${t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}" class="cv-tick">${t * 100}%</text>`;
+      for (const t of [0, .5, 1]) s += `<text x="${xOf(t)}" y="${H - 5}" text-anchor="${t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}" class="cv-tick">${t * 100}%</text>`;
       root.innerHTML = s + '</svg>';
       root.setAttribute('aria-label', `Belief curve: average ${Math.round(BM.betaMean(st.a, st.b) * 100)} percent circles`);
     },
