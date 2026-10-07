@@ -125,7 +125,7 @@ function closeActivity() {
   updateHeader();
 }
 $('quiz-close').onclick = () => { if (run.phase === 'idle') return; if (run.phase === 'answering' && run.game && run.game.streak > 0) confirmDialog('Leave this sub-level?', 'Your current run will be lost.', navBack); else navBack(); };
-$('quiz-help').onclick = () => showHelp(run.placement ? 'Find my level' : run.sub.name, run.placement ? '<p>Six quick pictures, with no feedback. The first one you miss is where you will start. You can always go back and play earlier levels.</p>' : `<p>${run.sub.help}</p>`);
+$('quiz-help').onclick = () => showHelp(run.placement ? 'Find my level' : run.sub.name, run.placement ? `<p>${PLACEMENT.length === 5 ? 'Five' : PLACEMENT.length} quick pictures, with no feedback. The first one you miss is where you will start. You can always go back and play earlier levels.</p>` : `<p>${run.sub.help}</p>`);
 
 function buildCtx(onComplete) {
   const stage = $('stage'); stage.innerHTML = '';

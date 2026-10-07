@@ -2,7 +2,7 @@
 
 A phone-first game that teaches Bayesian statistics from the very beginning, by trial and error. No build step, no accounts, no server: open `index.html` from any static host. Progress is saved on the device only.
 
-**Status:** Unit 0 ("Shapes and counting") and Unit 1 ("Prior, likelihood, posterior") are built, plus a six-picture placement test for Unit 0. Units 2+ are still to do (see `../docs/level-plan.md`). Unit 1 opens when Unit 0 is finished.
+**Status:** Unit 0 ("Shapes and counting") and Unit 1 ("Prior, likelihood, posterior") are built, plus a five-picture placement test for Unit 0. Units 2+ are still to do (see `../docs/level-plan.md`). Unit 1 opens when Unit 0 is finished.
 
 ## What is in Unit 0
 Every sub-level is something you move or draw, not a list of options. Nothing asks you to multiply; answers are judged against a tolerance.
