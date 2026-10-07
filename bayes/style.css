@@ -96,9 +96,9 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .tray { display: flex; flex-wrap: wrap; gap: 4px; min-height: 30px; align-items: center; justify-content: center; }
 .tray svg { width: 26px; height: 26px; animation: pop .25s ease-out; }
 @keyframes pop { 0% { transform: scale(.2) translateY(-30px); opacity: 0; } 70% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
-.tally { display: flex; gap: 12px; justify-content: center; align-items: flex-end; min-height: 34px; }
-.tallycol { display: flex; flex-direction: column-reverse; gap: 2px; align-items: center; min-width: 40px; }
-.tallycol svg { width: 22px; height: 22px; }
+.tally { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.tallyrow { display: flex; gap: 2px; min-height: 20px; justify-content: center; }
+.tallyrow svg { width: 18px; height: 18px; }
 .bigbtn { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: 1rem; }
 .bigbtn.alt { background: var(--accent-tint); color: var(--accent); }
 .bigbtn:disabled { opacity: .45; }
@@ -132,7 +132,7 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .fd.dim { opacity: .18; }
 
 /* ---- focus grid (conditional) ---- */
-.fgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: min(230px, 36vh); margin: 0 auto; }
+.fgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: min(230px, 30vh); margin: 0 auto; }
 .fgrid svg { width: 100%; height: auto; transition: opacity .2s, transform .2s; }
 .fgrid svg.dim { opacity: .15; }
 .lens { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
@@ -204,3 +204,23 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
   border: 2px solid rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; font-weight: 800; pointer-events: none; box-shadow: 0 6px 14px rgba(0,0,0,.25); }
 .draghint { text-align: center; font-size: .8rem; font-weight: 700; color: var(--muted); min-height: 1.1em; margin-top: 2px; }
 .bagdraw.spent .bagbody { opacity: .7; }
+
+/* "Which bag?" and "Rare bags": the two main bags and the shelf bags are 150%
+   of their original size (120px / 24px wide), scaled down only when the screen
+   is too short to fit them without scrolling. */
+.bags-row.big .bagbox { max-width: 190px; }
+.bags-row.big .bagbox svg { width: min(180px, 25.5vh); }
+.shelf.big { flex-wrap: wrap; width: min(100%, 210px); margin: 0 auto; gap: 4px 4px; }
+.shelf.big svg { width: 36px; height: 40px; }
+
+/* Nothing in the stage may be squashed to make room: if it doesn't fit, the
+   layout must change. (Without this the share bar silently shrank to a sliver
+   on short screens and the no-scroll check could not see it.) */
+.stage > * { flex-shrink: 0; }
+
+/* The smallest phones: the 150% bags give way a little rather than scroll. */
+@media (max-height: 600px) {
+  .bags-row.big .bagbox svg { width: min(180px, 21.5vh); }
+  .shelf.big svg { width: 30px; height: 33px; }
+  .shelf.big { width: min(100%, 175px); gap: 3px 3px; }
+}

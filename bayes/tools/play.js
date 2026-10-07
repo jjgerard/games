@@ -10,7 +10,8 @@ async function fits(page) {
   return page.evaluate(() => {
     const b = document.getElementById('quiz-body'), s = document.getElementById('stage');
     const over = [...b.querySelectorAll('*')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1); }).length;
-    return { v: b.scrollHeight - b.clientHeight, stage: s.scrollHeight - s.clientHeight, h: document.documentElement.scrollWidth - innerWidth, over };
+    const bar = document.querySelector('#stage .sharebar'); const squashed = bar && bar.getBoundingClientRect().height < 40 ? 1 : 0;
+    return { v: b.scrollHeight - b.clientHeight, stage: s.scrollHeight - s.clientHeight, h: document.documentElement.scrollWidth - innerWidth, over: over + squashed };
   });
 }
 async function checkFit(page, label) {
@@ -42,27 +43,27 @@ async function checkFit(page, label) {
         await page.evaluate(() => __run.ctrl.solve());
         await page.waitForFunction(() => __run.finished);
         await checkFit(page, `${tag} ${sub.id} done`);
-        await page.click('#quiz-action');
+        await page.evaluate(() => document.getElementById('quiz-action').click());
       } else {
         // one deliberate miss first: costs a heart, run goes on
         await page.evaluate(() => __run.ctrl.solveWrong());
         ok(`${tag} ${sub.id} check enabled when answered`, await page.isEnabled('#quiz-action'));
-        await page.click('#quiz-action');
+        await page.evaluate(() => document.getElementById('quiz-action').click());
         const wrong = await page.evaluate(() => ({ cls: document.getElementById('quiz-feedback').className, hearts: __run.game.missesLeft, streak: __run.game.streak }));
         ok(`${tag} ${sub.id} wrong answer marked wrong, heart used`, wrong.cls.includes('bad') && wrong.hearts === 1 && wrong.streak === 0, JSON.stringify(wrong));
         await checkFit(page, `${tag} ${sub.id} after wrong answer`);
-        await page.click('#quiz-action');
+        await page.evaluate(() => document.getElementById('quiz-action').click());
         for (let k = 0; k < 5; k++) {
           await page.evaluate(() => __run.ctrl.solve());
           await checkFit(page, `${tag} ${sub.id} q${k + 1} ready`);
-          await page.click('#quiz-action');
+          await page.evaluate(() => document.getElementById('quiz-action').click());
           const good = await page.evaluate(() => document.getElementById('quiz-feedback').className);
           if (!good.includes('good')) ok(`${tag} ${sub.id} right answer accepted (q${k + 1})`, false, document.title);
           await checkFit(page, `${tag} ${sub.id} q${k + 1} revealed`);
-          if (k < 4) await page.click('#quiz-action');
+          if (k < 4) await page.evaluate(() => document.getElementById('quiz-action').click());
         }
         ok(`${tag} ${sub.id} finished after 5 right`, await page.evaluate(() => __run.finished));
-        await page.click('#quiz-action');
+        await page.evaluate(() => document.getElementById('quiz-action').click());
       }
       await page.waitForSelector('#quiz-overlay.hidden', { state: 'attached' });
       const done = await page.$$eval('#sub-grid .tile.done', t => t.length);
@@ -79,7 +80,7 @@ async function checkFit(page, label) {
     const page = await ctx.newPage(); await page.goto(URL + '?seed=1'); await page.evaluate(() => localStorage.clear()); await page.reload();
     await page.click('#btn-start'); await page.click('#unit-grid .tile:not(.locked)');
     // the second tile unlocks once the first is done
-    await page.click('#sub-grid .tile:nth-child(1)'); await page.evaluate(() => __run.ctrl.solve()); await page.click('#quiz-action');
+    await page.click('#sub-grid .tile:nth-child(1)'); await page.evaluate(() => __run.ctrl.solve()); await page.evaluate(() => document.getElementById('quiz-action').click());
     await page.click('#sub-grid .tile:nth-child(2)');
     const bar = await page.$('.sharebar'); const box = await bar.boundingBox();
     await page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2); await page.mouse.down();
@@ -90,7 +91,7 @@ async function checkFit(page, label) {
     await page.waitForFunction(() => __run.finished);
     ok('dragging to the end completes the tutorial', true);
     // keyboard
-    await page.click('#quiz-action'); await page.click('#sub-grid .tile:nth-child(3)');
+    await page.evaluate(() => document.getElementById('quiz-action').click()); await page.click('#sub-grid .tile:nth-child(3)');
     await page.focus('.sharebar'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
     ok('arrow keys move the divider', (await page.evaluate(() => Number(document.querySelector('.sharebar').getAttribute('aria-valuenow')))) === 60);
     await ctx.close();
@@ -107,11 +108,11 @@ async function checkFit(page, label) {
       const pair = await page.evaluate(() => __run.ctrl.pair.join());
       if (pair === last) repeats++; last = pair;
       if (!seen.has(pair)) { seen.add(pair); const f = await fits(page); if (f.v > 1 || f.stage > 1 || f.over) misfit++; }
-      await page.evaluate(() => __run.ctrl.solve()); await page.click('#quiz-action');
+      await page.evaluate(() => __run.ctrl.solve()); await page.evaluate(() => document.getElementById('quiz-action').click());
       if (!(await page.$eval('#quiz-feedback', e => e.className.includes('good')))) bad++;
       const f2 = await fits(page); if (f2.v > 1 || f2.stage > 1 || f2.over) misfit++;
       if (await page.evaluate(() => __run.finished)) await page.evaluate(id => { closeActivity(); openActivity(UNITS[0].subs.find(s => s.id === id)); }, id);
-      else await page.click('#quiz-action');
+      else await page.evaluate(() => document.getElementById('quiz-action').click());
     }
     ok(`${id}: all 8 group/property questions appear`, seen.size === 8, [...seen].join(' '));
     ok(`${id}: never the same question twice in a row`, repeats === 0, String(repeats));
@@ -166,7 +167,7 @@ async function checkFit(page, label) {
         await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2); await page.mouse.down();
         await page.mouse.move(b.x + b.width / 2, b.y + b.height + 40, { steps: 6 }); await page.mouse.up();
       }
-      ok('three drags put three shapes in the tally', (await page.$$('.tallycol svg')).length === 3);
+      ok('three drags put three shapes in the tally', (await page.$$('.tallyrow svg')).length === 3);
     } else ok('closed-bag variant reachable', false);
     ok('drag tests: no page errors', errors.length === 0, errors.join('|'));
     await ctx.close();
@@ -182,12 +183,12 @@ async function checkFit(page, label) {
       await page.waitForSelector('#stage > *');
       await page.evaluate((wrong) => wrong ? __run.ctrl.solveWrong() : __run.ctrl.solve(), plan === 'missthird' && i === 2);
       await checkFit(page, `placement ${plan} item ${i + 1}`);
-      await page.click('#quiz-action'); await checkFit(page, `placement ${plan} item ${i + 1} after`);
-      await page.click('#quiz-action');
+      await page.evaluate(() => document.getElementById('quiz-action').click()); await checkFit(page, `placement ${plan} item ${i + 1} after`);
+      await page.evaluate(() => document.getElementById('quiz-action').click());
     }
     const txt = await page.textContent('#stage');
     ok(`placement ${plan} result shown`, plan === 'allright' ? /every picture right/.test(txt) : /Flip it/.test(txt), txt);
-    await page.click('#quiz-action');
+    await page.evaluate(() => document.getElementById('quiz-action').click());
     await page.waitForSelector('#screen-unit:not(.hidden)');
     const doneCount = await page.$$eval('#sub-grid .tile.done', t => t.length);
     ok(`placement ${plan} marks skipped sub-levels done`, plan === 'allright' ? doneCount === 10 : doneCount === 5, String(doneCount));

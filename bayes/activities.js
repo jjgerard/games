@@ -43,13 +43,17 @@ function buildShare(ctx, forceVariant) {
   const variant = forceVariant || (rng() < 0.5 ? 'draw' : 'bag');
   const bar = ShareBar({ value: 0.5, leftText: 'Circles', rightText: 'Squares', label: 'Share of circles' });
   const bagSeed = BM.int(rng, 1, 999);
-  let tally = null, drawer = null;
+  let tally = null, drawer = null, b5 = null;
   const bagEl = variant === 'bag' ? el('div', { class: 'bagbox', style: 'margin:0 auto', html: bagSVG(nC, 10 - nC, { seed: bagSeed, size: 190 }) }) : null;
   const update = () => ctx.setReady(bar.touched() && (variant === 'bag' || tally.counts.c + tally.counts.s >= 6));
   bar.el.addEventListener('pointerup', update); bar.el.addEventListener('keyup', update);
+  const MAX_DRAWS = 12; // enough for a good tally, and a tally of any size must fit the screen
   const draws = (k) => {
-    for (let i = 0; i < k; i++) tally.add(BM.drawShape(rng, nC / 10));
-    count.textContent = `${tally.counts.c + tally.counts.s} drawn`; update();
+    for (let i = 0; i < k && tally.counts.c + tally.counts.s < MAX_DRAWS; i++) tally.add(BM.drawShape(rng, nC / 10));
+    const n = tally.counts.c + tally.counts.s;
+    count.textContent = n >= MAX_DRAWS ? `${n} drawn: that is plenty` : `${n} drawn`;
+    if (n >= MAX_DRAWS) { drawer.setDisabled(true); b5.disabled = true; }
+    update();
   };
   const count = el('div', { class: 'stage-note' }, '0 drawn');
   if (variant === 'bag') {
@@ -58,8 +62,8 @@ function buildShare(ctx, forceVariant) {
   } else {
     ctx.setPrompt('The bag is closed. Drag at least 6 shapes out of it, then slide the divider to match your tally.');
     tally = Tally();
-    drawer = BagDrawer({ nC, nS: 10 - nC, seed: bagSeed, size: 'lg', sealed: true, onDraw: () => draws(1), label: 'Draw a shape' });
-    const b5 = el('button', { class: 'bigbtn alt', onclick: () => draws(5) }, 'Draw 5 at once');
+    drawer = BagDrawer({ nC, nS: 10 - nC, seed: bagSeed, size: 'md', sealed: true, onDraw: () => draws(1), label: 'Draw a shape' });
+    b5 = el('button', { class: 'bigbtn alt', onclick: () => draws(5) }, 'Draw 5 at once');
     ctx.stage.append(drawer.el, tally.el, count, el('div', { class: 'btnrow' }, b5), bar.el);
   }
   const target = () => variant === 'bag' ? nC / 10 : tally.counts.c / (tally.counts.c + tally.counts.s);
@@ -241,16 +245,17 @@ function makeTwoBags(rng, rare) {
 function buildTwoBags(ctx, rare) {
   const rng = ctx.rng, q = makeTwoBags(rng, rare);
   const truth = BM.posteriorA(q.pA, q.pB, q.nA, q.nB, [q.shape]);
-  ctx.setPrompt(`One bag is picked from the shelf and one shape is drawn: <b>${iconWord(q.shape)}</b>. How sure are you it is kind <b>A</b>?`);
-  const bags = el('div', { class: 'bags-row' },
+  ctx.setPrompt(`A bag from the shelf gave <b>${iconWord(q.shape)}</b>. How sure are you it was kind <b>A</b>?`);
+  const bags = el('div', { class: 'bags-row big' },
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(q.pA), 10 - BM.circlesPerTen(q.pA), { seed: 11, badge: 'A', size: 120 }) }),
     el('div', { class: 'bagbox', html: bagSVG(BM.circlesPerTen(q.pB), 10 - BM.circlesPerTen(q.pB), { seed: 12, badge: 'B', size: 120 }) }));
   const shelf = Shelf(q.nA, q.nB);
-  const drawn = el('div', { class: 'bigshape' }, 'Drawn:', shapeNode(q.shape, { size: 44 }));
+  shelf.classList.add('big');
+  const drawn = el('div', { class: 'bigshape' }, 'Drawn:', shapeNode(q.shape, { size: 30 }));
   const bar = ShareBar({ value: 0.5, leftText: 'A', rightText: 'B', leftClass: 'bar-A', rightClass: 'bar-B', label: 'How sure it is kind A' });
   const upd = () => ctx.setReady(bar.touched());
   bar.el.addEventListener('pointerup', upd); bar.el.addEventListener('keyup', upd);
-  ctx.stage.append(bags, el('div', { class: 'stage-note' }, 'The shelf (each bag is kind A or B)'), shelf, drawn, bar.el);
+  ctx.stage.append(bags, shelf, drawn, bar.el);
   return {
     check() {
       const ok = Math.abs(bar.get() - truth) <= TOL_BELIEF + 1e-9;
@@ -259,7 +264,7 @@ function buildTwoBags(ctx, rare) {
       const msg = `Imagine ten draws from every bag on the shelf. ${c.fromA + c.fromB} of those draws show ${q.shape === 'c' ? 'a circle' : 'a square'}: ${c.fromA} from kind-A bags and ${c.fromB} from kind-B bags. So ${pct(truth)}% for A.`;
       return { correct: ok, message: ok ? `Yes. ${msg}` : `Not quite. ${msg}` };
     },
-    reveal() { bags.remove(); shelf.previousSibling.remove(); shelf.replaceWith(FreqGrid(q.pA, q.pB, q.nA, q.nB, q.shape)); },
+    reveal() { bags.remove(); shelf.replaceWith(FreqGrid(q.pA, q.pB, q.nA, q.nB, q.shape)); },
     solve() { bar.set(truth, true); upd(); },
     solveWrong() { bar.set(truth > 0.5 ? 0.04 : 0.96, true); upd(); },
   };

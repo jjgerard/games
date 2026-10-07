@@ -121,15 +121,17 @@ function Tray() {
   return { el: root, add(type, opts) { root.append(shapeNode(type, { size: 26, ...opts })); }, clear() { root.innerHTML = ''; } };
 }
 
-// Two tally columns, one per shape, that fill as shapes are drawn.
+// A tally in two short rows, one per shape, that fill left to right as shapes
+// are drawn. Rows, not stacks: a column of twelve shapes would not fit a
+// small screen. The caller caps how many can be drawn.
 function Tally() {
   const root = el('div', { class: 'tally' });
-  const cols = { c: el('div', { class: 'tallycol' }), s: el('div', { class: 'tallycol' }) };
-  root.append(cols.c, cols.s);
+  const rows = { c: el('div', { class: 'tallyrow' }), s: el('div', { class: 'tallyrow' }) };
+  root.append(rows.c, rows.s);
   const counts = { c: 0, s: 0 };
   return {
     el: root, counts,
-    add(type) { counts[type]++; cols[type].append(shapeNode(type, { size: 22 })); },
+    add(type) { counts[type]++; rows[type].append(shapeNode(type, { size: 18 })); },
   };
 }
 
