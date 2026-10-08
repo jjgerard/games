@@ -478,3 +478,6 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 a.link-btn { display: inline-flex; align-items: center; min-height: 44px; }
 .backrow { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
 .screen > a.allgames { display: flex; width: fit-content; }
+
+/* Home screen: the hero already shows the name and logo */
+body:has(#screen-home:not(.hidden)) #app-header .brand { visibility: hidden; }

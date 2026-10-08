@@ -34,3 +34,7 @@ footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:v
 .game{display:flex;align-items:center;gap:14px}
 .game img{flex:none;width:64px;height:54px;object-fit:contain}
 .game p{margin:.2em 0 .3em}
+nav.top.home{justify-content:flex-end}
+.hero{text-align:center}
+.hero p{margin-left:auto;margin-right:auto}
+.hero-logo{height:120px;width:auto}
