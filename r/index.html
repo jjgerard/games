@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bag of Shapes</title>
+<title>R from Zero</title>
 <link rel="stylesheet" href="style.css?v=1">
 <link rel="icon" href="logo.svg?v=1" type="image/svg+xml">
-<meta name="theme-color" content="#34306b">
+<meta name="theme-color" content="#14565e">
 <!-- Same arrangement as Shapes and Trial and Error: enough to open from a
      home screen, deliberately NO service worker, so nobody is stuck on a
      stale copy. -->
@@ -15,7 +15,7 @@
 <div id="app">
   <header id="app-header">
     <button class="brand" id="brand" aria-label="Home">
-      <img src="logo.svg?v=1" alt="" class="brand-logo"><span class="brand-name">Bag of Shapes</span>
+      <img src="logo.svg?v=1" alt="" class="brand-logo"><span class="brand-name">R from Zero</span>
     </button>
     <div class="header-right">
       <span id="points" class="points-pill hidden">0 pts</span>
@@ -27,13 +27,13 @@
     <section id="screen-home" class="screen">
       <div class="hero">
         <img src="logo.svg?v=1" alt="" class="hero-logo">
-        <h1 class="hero-name">Bag of Shapes</h1>
-        <p class="hero-tag">Solve puzzles with Bayesian statistics!</p>
+        <h1 class="hero-name">R from Zero</h1>
+        <p class="hero-tag">Learn R by building code from tiles and tables.</p>
       </div>
       <div class="card narrow">
         <button id="btn-start" class="btn-primary btn-hero">Start from the beginning</button>
         <button id="btn-continue" class="btn-primary btn-hero hidden">Continue</button>
-        <button id="btn-placement" class="btn-secondary btn-hero">I know some of this: find my level</button>
+        <button id="btn-placement" class="btn-secondary btn-hero">I know some R: where do I start?</button>
         <p class="muted small">Nothing is graded or sent anywhere. Your progress is saved on this device only.</p>
         <button class="link-btn" data-help="general">How does this work?</button>
       </div>
@@ -112,15 +112,9 @@
 
 <script src="sound.js?v=1"></script>
 <script src="streak.js?v=1"></script>
-<script src="math.js?v=1"></script>
-<script src="ui.js?v=1"></script>
-<script src="activities.js?v=1"></script>
-<script src="unit1.js?v=1"></script>
-<script src="ui2.js?v=1"></script>
-<script src="unit2.js?v=1"></script>
-<script src="unit3.js?v=1"></script>
-<script src="unit4.js?v=1"></script>
-<script src="unit5.js?v=1"></script>
+<script src="engine.js?v=1"></script>
+<script src="part1.js?v=1"></script>
+<script src="part2.js?v=1"></script>
 <script src="app.js?v=1"></script>
 <script>
   if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister()));

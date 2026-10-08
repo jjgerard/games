@@ -117,6 +117,78 @@
     return { prior, lik, post: w.map(x => x / t) };
   };
 
+  // ---- Units 2-6 ------------------------------------------------------------
+  BM.lgamma = lgamma;
+  BM.lbeta = (a, b) => lgamma(a) + lgamma(b) - lgamma(a + b);
+  BM.lchoose = (n, k) => lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1);
+  // erf by series (small x) or continued-fraction-like asymptotics (large x); good to about 1e-12.
+  function erf(x) {
+    const ax = Math.abs(x);
+    if (ax < 3) { let s = 0, t = ax; for (let n = 0; n < 80; n++) { s += t / (2 * n + 1); t *= -ax * ax / (n + 1); } return Math.sign(x) * 2 / Math.sqrt(Math.PI) * s; }
+    // erfc(x) ~ exp(-x^2)/(x sqrt(pi)) * (1 - 1/(2x^2) + 3/(4x^4) - 15/(8x^6) + ...)
+    let term = 1, sum = 1; for (let k = 1; k < 12; k++) { term *= -(2 * k - 1) / (2 * ax * ax); sum += term; }
+    return Math.sign(x) * (1 - Math.exp(-ax * ax) / (ax * Math.sqrt(Math.PI)) * sum);
+  }
+  BM.normPdf = (x, m = 0, s = 1) => Math.exp(-0.5 * ((x - m) / s) ** 2) / (s * Math.sqrt(2 * Math.PI));
+  BM.normCdf = (x, m = 0, s = 1) => 0.5 * (1 + erf((x - m) / (s * Math.SQRT2)));
+  BM.normQuantile = (p, m = 0, s = 1) => { let lo = -10, hi = 10; for (let i = 0; i < 70; i++) { const mid = (lo + hi) / 2; if (BM.normCdf(mid) < p) lo = mid; else hi = mid; } return m + s * (lo + hi) / 2; };
+  BM.randn = rng => { let u = 0; while (u === 0) u = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng()); };
+
+  // A sampler for Beta(a, b): the curve's cumulative area is tabulated once, then each draw is one lookup.
+  BM.betaSampler = function (a, b, cells = 800) {
+    const cum = [0]; let acc = 0;
+    for (let i = 0; i < cells; i++) { acc += BM.betaPdf((i + 0.5) / cells, a, b); cum.push(acc); }
+    return rng => { const u = rng() * acc; let lo = 0, hi = cells; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= u) lo = mid; else hi = mid; } return (lo + (u - cum[lo]) / (cum[lo + 1] - cum[lo])) / cells; };
+  };
+
+  // Counts of circles in n draws: binomial for a known share, beta-binomial when the share itself is uncertain
+  // (this is what a prior or posterior PREDICTIVE distribution is).
+  BM.binomPmf = (k, n, p) => (p <= 0 ? (k === 0 ? 1 : 0) : p >= 1 ? (k === n ? 1 : 0) : Math.exp(BM.lchoose(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p)));
+  BM.betaBinomPmf = (k, n, a, b) => Math.exp(BM.lchoose(n, k) + BM.lbeta(k + a, n - k + b) - BM.lbeta(a, b));
+  BM.pmfBracket = function (pmf, mass = 0.9) {
+    const tail = (1 - mass) / 2; let c = 0, lo = null, hi = null;
+    pmf.forEach((p, k) => { c += p; if (lo === null && c >= tail - 1e-12) lo = k; if (hi === null && c >= 1 - tail - 1e-12) hi = k; });
+    return [lo, hi];
+  };
+  BM.pmfMass = (pmf, lo, hi) => pmf.slice(lo, hi + 1).reduce((s, x) => s + x, 0);
+
+  // Least-squares line with its standard errors (a flat-prior Bayesian fit agrees with this closely).
+  BM.ols = function (x, y) {
+    const n = x.length, xb = x.reduce((s, v) => s + v, 0) / n, yb = y.reduce((s, v) => s + v, 0) / n;
+    let sxx = 0, sxy = 0; for (let i = 0; i < n; i++) { sxx += (x[i] - xb) ** 2; sxy += (x[i] - xb) * (y[i] - yb); }
+    const b = sxy / sxx, a = yb - b * xb; let rss = 0; for (let i = 0; i < n; i++) rss += (y[i] - a - b * x[i]) ** 2;
+    const sigma = Math.sqrt(rss / (n - 2));
+    return { n, xb, yb, sxx, a, b, sigma, seB: sigma / Math.sqrt(sxx), seA: sigma * Math.sqrt(1 / n + xb * xb / sxx), seSigma: sigma / Math.sqrt(2 * (n - 2)) };
+  };
+  BM.mean = v => v.reduce((s, x) => s + x, 0) / v.length;
+  BM.sd = v => { const m = BM.mean(v); return Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / (v.length - 1)); };
+  // Draw (intercept, slope) pairs from the fit's uncertainty.
+  BM.lineDraws = function (rng, f, count) {
+    const va = f.seA ** 2, vb = f.seB ** 2, cab = -(f.sigma ** 2) * f.xb / f.sxx;
+    const l11 = Math.sqrt(va), l21 = cab / l11, l22 = Math.sqrt(Math.max(vb - l21 * l21, 1e-12));
+    return Array.from({ length: count }, () => { const z1 = BM.randn(rng), z2 = BM.randn(rng); return { a: f.a + l11 * z1, b: f.b + l21 * z1 + l22 * z2 }; });
+  };
+
+  // Partial pooling of one group's average toward the overall average (variances treated as known).
+  BM.shrinkW = (tau, sigma, n) => tau * tau / (tau * tau + sigma * sigma / n);
+  BM.pooled = (m, mu, w) => mu + w * (m - mu);
+
+  // Share of the posterior average that comes from the imagined (prior) shapes.
+  BM.priorShare = (a0, b0, n) => (a0 + b0) / (a0 + b0 + n);
+  // Gap between two posterior means (flat prior vs Beta(a, b)) after n draws that came out with share p.
+  BM.meanGap = (a, b, n, p) => Math.abs((1 + p * n) / (2 + n) - (a + p * n) / (a + b + n));
+
+  // Balanced groups (same n each): estimate the between-group and within-group variances by the
+  // classical ANOVA method (this is what a random-intercept model gives for balanced data), and the
+  // pooling weight on each group's own average.
+  BM.anovaPool = function (groups) {
+    const G = groups.length, n = groups[0].length, means = groups.map(BM.mean), grand = BM.mean(means);
+    const msw = groups.reduce((s, g, j) => s + g.reduce((t, y) => t + (y - means[j]) ** 2, 0), 0) / (G * (n - 1));
+    const msb = n * means.reduce((s, m) => s + (m - grand) ** 2, 0) / (G - 1);
+    const tau2 = Math.max(0, (msb - msw) / n), w = tau2 / (tau2 + msw / n);
+    return { G, n, means, grand, msw, msb, tau2, w, pooled: means.map(m => grand + w * (m - grand)) };
+  };
+
   if (typeof module !== 'undefined' && module.exports) module.exports = BM;
   else root.BM = BM;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -7,7 +7,7 @@ const N = Number(process.argv[2] || 60);
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
   const ctx = await browser.newContext({ viewport: { width: 320, height: 568 } });
   const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('http://localhost:8123/index.html?seed=' + (Date.now() % 100000)); await page.evaluate(() => localStorage.clear()); await page.reload();
+  await page.goto('http://localhost:' + (process.env.PORT || 8123) + '/index.html?seed=' + (Date.now() % 100000)); await page.evaluate(() => localStorage.clear()); await page.reload();
   const ids = await page.evaluate(() => UNITS.flatMap(u => u.subs).filter(s => s.kind === 'streak').map(s => s.id));
   let bad = 0;
   for (const id of ids) {
