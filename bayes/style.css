@@ -348,7 +348,8 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 @media (max-width: 340px) { .shelfstrip { gap: 0; } .shelfstrip svg { width: 54px; height: 54px; } }
 
 /* the question and its feedback share one slot: after Check the feedback takes the question's place */
-.qslot { display: grid; }
+.qslot { display: grid; align-content: start; min-height: calc(4 * 1.25em + 10px); } /* room for four lines of question or feedback, so nothing below jumps when feedback arrives */
+@media (max-width: 349px) { .qslot { min-height: calc(5 * 1.25em + 10px); } }
 .qslot > * { grid-area: 1 / 1; }
 .qslot:has(.quiz-feedback.good, .quiz-feedback.bad) .quiz-prompt { visibility: hidden; }
 .qslot .quiz-feedback:not(.good):not(.bad) { visibility: hidden; }

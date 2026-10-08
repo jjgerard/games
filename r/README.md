@@ -10,7 +10,7 @@ There is no console to type in, so every answer is built or read on screen:
 - **drag rows into group boxes**, **link matching keys**, **press Run on a belt** so a table visibly goes through each "and then" step, **fold** columns into rows.
 Statistics are not taught: the game only teaches running a function and reading its output.
 
-## What is in it (120 sub-levels, 22 units)
+## What is in it (119 sub-levels, 22 units)
 
 Each unit starts with a one-possible-move tutorial whose only control flashes. 5 right in a row (2 hearts); the key drills are 10 in a row. A short "where do I start?" (10 questions, no feedback, no points) is on the home screen.
 
@@ -41,7 +41,7 @@ Each unit starts with a one-possible-move tutorial whose only control flashes. 5
 | 17 arrange, count, distinct | arrange on the belt, which row is first (`desc`), count/distinct row counts **10** |
 | 18 joins | match the key, link rows to partners, rows after `left_join`/`inner_join`/`anti_join` **10**, `by = c("left" = "right")`, join or stack **10** |
 | 19 pivots | fold the columns (animation), `pivot_longer` call **10**, rows after a pivot **10**, `pivot_wider` call **10** |
-| 20 Whole pipelines | write from a description, base R to tidy translation **10**, concept right / syntax slip, one row at the end |
+| 20 Whole pipelines | write from a description, base R to tidy translation **10**, concept right / syntax slip |
 | 21 ggplot2 | add a layer, `+` vs pipe, which geom draws it, `aes()` |
 
 Units open in order; the placement test can start you later (it starts at the unit after the last unit it tested and you passed, so it never skips untested material).
@@ -72,3 +72,13 @@ node tools/naive.js 150       # how often random / always-first / always-longest
 - Left out on purpose (still in the plan): block-index arithmetic, units (days vs years), loop vs vectorised timing, `if`/`else` and writing a function, factors, lists in depth, `across()`/purrr, facets and error bars in ggplot2, other join types, stringr/lubridate. `v + 1` style vector arithmetic is replaced by whole-row comparisons and `rev`/`sort` to keep arithmetic off the learner.
 - The text-choice sub-levels (kind of value, `join` choice, "one row is...", "which geom") use 3-4 short options after the idea has been shown; a naive "always first/last/longest" strategy passes at most about half of the questions of any sub-level (see `tools/naive.js`).
 - Mascot and sound design are the shared placeholder ones; no licence file yet.
+
+## Checked against `../docs/objections.md` (all 21 points)
+- 1-4 size and fit: `tools/audit.js` (ported; 17px minimum including text in pictures, 44px targets, 36px on 320 wide, chart pictures >= 120px) reports no issues in 894 states; `tools/stress.js` confirms no scrolling at 320x568, 360x640, 414x800 before and after Check. Tables are capped at 5-6 rows and vectors at 7 cells so nothing is shrunk below size.
+- 5 clear asks: every engine appends its exact action ("Tap...", "Drop the tiles into the gaps", "Set it with + and -") when a prompt does not already say one; prompts state the situation first. Not fully satisfied: some prompts are short for space ("How many rows does the result have?") and rely on the code and table shown above them.
+- 6-7, 14: no repeated information (the previous duplicate "one row at the end" level was removed); tables show at most 5 rows, 3-4 columns.
+- 8-11: direction and controls are plain taps/drags; the flashing control in each tutorial is the same one used later (tile, cell, Run, + button). Row counts use a flat bin of row slivers with - / + (>= 44px), and the real output table is shown after Check.
+- 12-13: generators vary data, thresholds, operators and wording; two levels are deliberate scaffolds (helper row then no helper row for `v[test]`).
+- 15-16 layout: stage content is centred; the feedback replaces the prompt in the same slot. Not fully satisfied: after Check the tile tray is hidden (and a count level swaps the input table for the output table) so the answer fits, which shifts content a little.
+- 17, 21: names (pipe, mutate, summarise...) are explained after the tutorial or in the explanation; code shown is real R.
+- 18: no typing; arithmetic is avoided (only counting of tiny whole numbers such as nchar or n()). 19: naive strategies measured, none above 50% (`tools/naive.js`). 20: neutral examples (letters, scores, coffee/tea, drawers).

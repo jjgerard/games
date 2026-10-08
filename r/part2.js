@@ -443,7 +443,7 @@ const UT9 = {
     streak('t9-longer', 'pivot_longer', 'Fill the call', 'pivot_longer(cols = the columns to fold, names_to = a name for the new column of headers, values_to = a name for the column of values). The new names are text, so in quotes.', ctx => {
       const r = ctx.rng, w = wideLong(r, 2), nt = RG.pick(r, ['drink', 'when', 'side']), vt = RG.pick(r, ['liked', 'score', 'n']);
       const g = Grid({ data: w.long.slice(0, 2).map(x => x.map(String)), head: ['id', nt, vt], compact: true, label: `long table with columns id, ${nt}, ${vt}; first person: ${w.long.slice(0, 2).map(x => x.join(' ')).join('; ')}` });
-      return E.assemble(ctx, { prompt: `Fold <code>${w.a}</code> and <code>${w.b}</code> into the long table shown (first person only).`, pic: g.wrap, lines: [['data %>% pivot_longer('], ['cols = ', { slot: 'a' }, ','], ['names_to = ', { slot: 'b' }, ','], ['values_to = ', { slot: 'c' }, ')']], tiles: [`c(${w.a}, ${w.b})`, 'c(id)', `"${nt}"`, `"${vt}"`, nt], answer: { a: `c(${w.a}, ${w.b})`, b: `"${nt}"`, c: `"${vt}"` },
+      return E.assemble(ctx, { prompt: `Drop tiles in to fold <code>${w.a}</code> and <code>${w.b}</code> into this table.`, pic: g.wrap, lines: [['data %>% pivot_longer('], ['cols = ', { slot: 'a' }, ','], ['names_to = ', { slot: 'b' }, ','], ['values_to = ', { slot: 'c' }, ')']], tiles: [`c(${w.a}, ${w.b})`, 'c(id)', `"${nt}"`, `"${vt}"`, nt], answer: { a: `c(${w.a}, ${w.b})`, b: `"${nt}"`, c: `"${vt}"` },
         why: { a: { 'c(id)': 'id stays as it is. Fold the two columns that hold the values.', '*': 'cols are the columns to fold down.' }, b: { [nt]: 'The new column\'s name is given as text, in quotes.', '*': `names_to is the new column that holds the old headers: ${nt}.` }, c: { '*': `values_to is the column that holds the values: ${vt}.` } },
         explain: `The headers ${w.a} and ${w.b} become values of "${nt}"; the numbers go to "${vt}".`, rcheck: [{ setup: `data = data.frame(id = ${rvec(w.ids)}, ${w.a} = ${rvec(w.wide.map(x => x[1]))}, ${w.b} = ${rvec(w.wide.map(x => x[2]))})`, expr: `data %>% pivot_longer(cols = c(${w.a}, ${w.b}), names_to = "${nt}", values_to = "${vt}")`, expect: dfSpec(['id', nt, vt], w.long) }] });
     }, { target: 10 }),
@@ -480,9 +480,9 @@ const UT10 = {
     streak('t10-order', 'Write from a description', 'Steps in order', 'Say what you want in order: which rows, which new columns, which groups, then what to summarise.', ctx => {
       const r = ctx.rng, t = genData(r), k = RG.int(r, 3, 5), cs = RG.int(r, 0, 2);
       const cases = [
-        { p: `Keep scores over ${k}, then count the rows for each subject.`, steps: [S.filter(`score > ${k}`, o => o.score > k), S.group_by('subj'), S.summarise('n', 'n()', g => g.length)] },
-        { p: 'Add each subject\'s total to every trial, then keep only the trials of subject A.', steps: [S.group_by('subj'), S.mutate('total', 'sum(score)', (o, g) => sumOf(g)), S.filter('subj == "A"', o => o.subj === 'A')] },
-        { p: `Make a column <code>big</code> (score over ${k}), then count rows for each value of big.`, steps: [S.mutate('big', `score > ${k}`, o => o.score > k), S.count('big')] },
+        { p: `Keep scores over ${k}, then count rows per subject.`, steps: [S.filter(`score > ${k}`, o => o.score > k), S.group_by('subj'), S.summarise('n', 'n()', g => g.length)] },
+        { p: 'Add each subject\'s total, then keep subject A.', steps: [S.group_by('subj'), S.mutate('total', 'sum(score)', (o, g) => sumOf(g)), S.filter('subj == "A"', o => o.subj === 'A')] },
+        { p: `Make <code>big</code> (score over ${k}), then count rows per big.`, steps: [S.mutate('big', `score > ${k}`, o => o.score > k), S.count('big')] },
       ][cs];
       const out = runSteps(t, cases.steps); if (!out.rows.length) return UT10.subs[0].build(ctx);
       const n = cases.steps.length, ids = ['a', 'b', 'c', 'd'].slice(0, n);

@@ -188,7 +188,7 @@ function nextQuestion() {
   const btn = $('quiz-action'); btn.textContent = sub.kind === 'tutorial' ? 'Waiting for your move…' : 'Check'; btn.disabled = true;
   const ctx = buildCtx(msg => {
     run.phase = 'review'; setFeedback(msg, 'good'); playCorrectSound();
-    markDone(sub.id, true); setFeedback(`${msg} Sub-level complete: +${POINTS_SUB_COMPLETE} pts.`, 'good');
+    markDone(sub.id, true); setFeedback(`${msg} +${POINTS_SUB_COMPLETE} pts.`, 'good');
     btn.textContent = 'Back to sub-levels'; btn.disabled = false; run.finished = true; focusAction();
   });
   run.ctrl = sub.build(ctx); focusQuestion();
@@ -206,7 +206,7 @@ $('quiz-action').onclick = () => {
     renderStreak();
     if (res.complete) {
       markDone(run.sub.id, true); run.finished = true;
-      setFeedback(`${r.message} Sub-level complete: +${POINTS_SUB_COMPLETE} pts!`, 'good'); playChimeSound();
+      setFeedback(`${r.message} +${POINTS_SUB_COMPLETE} pts!`, 'good'); playChimeSound();
       btn.textContent = 'Back to sub-levels';
     } else btn.textContent = res.forgiven ? 'Next (you have used a heart)' : 'Next';
     btn.disabled = false; focusAction();
