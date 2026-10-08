@@ -12,7 +12,7 @@ Statistics are not taught: the game only teaches running a function and reading 
 
 ## What is in it (119 sub-levels, 22 units)
 
-Each unit starts with a one-possible-move tutorial whose only control flashes. 5 right in a row (2 hearts); the key drills are 10 in a row. A short "where do I start?" (10 questions, no feedback, no points) is on the home screen.
+Each unit starts with a one-possible-move tutorial whose only control flashes. 5 right in a row (2 hearts), except Units 0-3 (running a line, values, variables, functions) which need only 2; the key drills are 10 in a row. A short "where do I start?" (10 questions, no feedback, no points) is on the home screen.
 
 ### Part 1: base R
 | Unit | Sub-levels (key drills marked **10**) |

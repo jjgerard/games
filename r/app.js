@@ -9,6 +9,8 @@ const seedBase = params.has('seed') ? Number(params.get('seed')) : Date.now() % 
 let seedCounter = 0;
 const nextRng = () => RG.mulberry32(seedBase + 7919 * (++seedCounter));
 const UNITS = [...UNITS_P1, ...UNITS_P2];
+// The first four units (running a line, values, variables, functions) are quick checks: two right in a row.
+UNITS.slice(0, 4).forEach(u => u.subs.forEach(s => { if (s.kind === 'streak' && s.target === 5) s.target = 2; }));
 
 // ---------------- storage ----------------
 function loadState() {
