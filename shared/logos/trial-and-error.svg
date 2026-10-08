@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- A rising scatter plot: the one picture every level of the game comes
+       back to. The dots borrow the Shapes and Language palette, so the two
+       icons sit together as a family on a home screen. -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="#1f4e5f"/>
+  <path d="M 118 104 L 118 394 L 408 394" fill="none" stroke="#f6f4ef" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="160" y1="352" x2="384" y2="150" stroke="#f6f4ef" stroke-width="12" stroke-linecap="round" opacity="0.45"/>
+  <g stroke="#1f4e5f" stroke-width="8">
+    <circle cx="170" cy="330" r="34" fill="#e8b400"/>
+    <circle cx="240" cy="290" r="34" fill="#e2657c"/>
+    <circle cx="300" cy="222" r="34" fill="#3f9d5c"/>
+    <circle cx="372" cy="170" r="34" fill="#3f8fd0"/>
+  </g>
+  <g fill="#ffffff" opacity="0.45">
+    <ellipse cx="160" cy="318" rx="12" ry="6" transform="rotate(-30 160 318)"/>
+    <ellipse cx="230" cy="278" rx="12" ry="6" transform="rotate(-30 230 278)"/>
+    <ellipse cx="290" cy="210" rx="12" ry="6" transform="rotate(-30 290 210)"/>
+    <ellipse cx="362" cy="158" rx="12" ry="6" transform="rotate(-30 362 158)"/>
+  </g>
+</svg>
