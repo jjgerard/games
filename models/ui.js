@@ -324,7 +324,7 @@ function TileBuilder({ pool, prefix = '', suffix = '', onChange = () => {}, flas
   const api = { el: root, chosen: [], btns: {}, locked: false };
   const draw = (notify = true) => {
     line.replaceChildren(el('span', { class: 'tfix' }, prefix), ...[...api.chosen.flatMap((k, i) => [el('button', { class: 'tile2 inline', 'aria-label': `${pool.find(p => p.key === k).text}, remove`, onclick: () => { if (!api.locked) api.remove(k, true); } }, pool.find(p => p.key === k).text), i < api.chosen.length - 1 ? el('span', { class: 'tfix' }, '+') : null])].filter(Boolean), el('span', { class: 'tfix' }, suffix));
-    for (const p of pool) api.btns[p.key].classList.toggle('used', api.chosen.includes(p.key));
+    for (const p of pool) { const used = api.chosen.includes(p.key); api.btns[p.key].classList.toggle('used', used); api.btns[p.key].style.display = used ? 'none' : ''; }
     for (const p of pool) api.btns[p.key].disabled = api.locked || api.chosen.includes(p.key);
     if (notify) onChange(api.chosen.slice());
   };

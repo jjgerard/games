@@ -49,6 +49,7 @@ const KINDS = {
   'filter-or': (r, t) => { const k = kFor(r, t, k => { const a = t.rows.filter(x => x[0] === 'A' || x[2] > k).length, b = t.rows.filter(x => x[0] === 'A' && x[2] > k).length; return a !== b && a < t.rows.length && b > 0; }); return k && [S.filter(`subj == "A" | score > ${k}`, o => o.subj === 'A' || o.score > k)]; },
   'filter-and': (r, t) => { const k = kFor(r, t, k => { const a = t.rows.filter(x => x[0] === 'A' || x[2] > k).length, b = t.rows.filter(x => x[0] === 'A' && x[2] > k).length; return a !== b && b > 0; }); return k && [S.filter(`subj == "A" & score > ${k}`, o => o.subj === 'A' && o.score > k)]; },
   'group': () => [S.group_by('subj')],
+  'filter-group': (r, t) => { const k = kFor(r, t, k => { const n = t.rows.filter(x => x[2] > k).length; return n >= 1 && n <= t.rows.length - 1; }); return k && [S.filter(`score > ${k}`, o => o.score > k), S.group_by('subj')]; },
   'group2': () => [S.group_by('subj', 'cond')],
   'group-mutate': () => [S.group_by('subj'), S.mutate('total', 'sum(score)', (o, g) => sumOf(g))],
   'group-summ': () => [S.group_by('subj'), S.summarise('total', 'sum(score)', g => sumOf(g))],
@@ -73,7 +74,7 @@ function rowCase(r, kinds) {
 }
 const rowExplain = (cs, n) => {
   const k = cs.kind;
-  if (k === 'group' || k === 'group2') return `group_by() only labels the rows, it collapses nothing. Still ${n} rows.`;
+  if (k === 'group' || k === 'group2' || k === 'filter-group') return `group_by() only labels the rows, it collapses nothing. Still ${n} rows.`;
   if (k === 'group-mutate') return `mutate keeps every row and repeats each group's total. Still ${n} rows.`;
   if (k === 'group-summ' || k === 'group2-summ') return `summarise collapses each group to one row: ${n} groups, ${n} rows.`;
   if (k === 'summ-all') return 'With no groups, summarise collapses everything to one row.';
@@ -154,7 +155,7 @@ const UT1 = {
       const r = ctx.rng, k = RG.int(r, 3, 6), t = genData(r);
       const good = [`filter(score > ${k})`, 'arrange(score)', 'select(subj, score)', 'mutate(double = score * 2)', 'group_by(subj)'];
       const bad = ['double = score * 2', `score > ${k}`, 'score', '"A"', 'new_score = score + 1'];
-      const b = RG.pick(r, bad), at = RG.int(r, 1, 2), others = RG.sample(r, good, 2); const steps = [...others]; steps.splice(at, 0, b);
+      const b = RG.pick(r, bad), at = RG.int(r, 0, 2), others = RG.sample(r, good, 2); const steps = [...others]; steps.splice(at, 0, b);
       const lines = ['data %>%', ...steps.map((s, i) => '  ' + s + (i < steps.length - 1 ? ' %>%' : ''))];
       return E.pick(ctx, { prompt: 'One line breaks the pipe. Tap it.', mode: 'line', single: true, items: lines, answer: [at + 1], explain: `\`${b}\` is not a function call. A new column goes inside mutate(...), a test inside filter(...).`, rcheck: [{ kind: 'error', setup: dataSetup(t), code: `data %>% ${b}`, contains: '' }].slice(0, 0) });
     }),
@@ -290,7 +291,7 @@ const UT5 = {
       const r = ctx.rng, t = genData(r);
       return E.belt(ctx, { prompt: 'Press Run and watch the table. Count the rows before and after.', table: t, head: 'data', steps: [S.group_by('subj')], done: 'Same rows, same columns. The coloured letter on each row just says which group it is in. group_by() collapses nothing.' });
     }),
-    streak('t5-alone', 'group_by alone', 'How many rows?', 'group_by() only labels the rows by group. It collapses nothing, so the row count does not change.', ctx => rowQuestion(ctx, ['group', 'group2', 'group', 'group-mutate', 'filter-score']), { target: 10 }),
+    streak('t5-alone', 'group_by alone', 'How many rows?', 'group_by() only labels the rows by group. It collapses nothing, so the row count does not change.', ctx => rowQuestion(ctx, ['group', 'group', 'group2', 'filter-group', 'filter-score', 'group-summ', 'group2-summ']), { target: 10 }),
     streak('t5-boxes', 'Rows into boxes', 'Sort rows by group', 'summarise() gives one row for each box. Sort each row into its group, then count the boxes.', ctx => {
       const r = ctx.rng, t = genData(r), groups = [...new Set(t.rows.map(x => x[0]))].sort();
       const steps = [S.group_by('subj'), S.summarise('n', 'n()', g => g.length)];

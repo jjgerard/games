@@ -366,7 +366,7 @@ E.fill = (ctx, c) => {
     const n = g.cell[id]; n._accept = tile => setVal(id, tile.t); n.setAttribute('data-drop', '1');
     n.addEventListener('click', () => {
       if (locked || done) return;
-      if (held) setVal(id, held.t); else if (vals[id] != null) { delete vals[id]; paint(); }
+      if (held && vals[id] !== held.t) setVal(id, held.t); else if (vals[id] != null) { delete vals[id]; paint(); }
     });
   });
   if (c.tutorial) { held = palette[0]; flash(g.cell[blankIds[0]]); }

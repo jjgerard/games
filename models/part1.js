@@ -101,7 +101,7 @@ function buildZero(ctx) {
       return { correct: ok, message: ok ? (centred ? `Yes. After centring, 0 on the model's age scale is the average age, so the intercept is the predicted score at the average age (${f0(mx)}).` : `Yes. Age 0 is the model's zero. It is far outside the data (62 to 98), so this intercept is an extrapolation (${f1(yAt(0))}).`)
         : (centred ? `Not quite. Centred age is 0 at the average age, ${f0(mx)} months, so that is where the intercept is read.` : 'Not quite. Without centring, the intercept is read at age 0, far to the left of the data.') };
     },
-    solve() { h.set(target, true); }, solveWrong() { h.set(centred ? 0 : mx, true); }, info: { centred, target, tol, mean: mx, start: h.v },
+    solve() { h.set(target, true); }, solveWrong() { h.set(centred ? 0 : mx, true); }, info: { centred, target, tol, mean: mx, start: h.v, xs, ys, b0: fit.b0, b1: fit.b1 },
   };
 }
 
@@ -153,7 +153,7 @@ function buildBound(ctx) {
       const g = U.glm(S.xs, S.ks, S.xs.map(() => S.n)); ch.add(sv('polyline', { class: 'curveln', points: Array.from({ length: 61 }, (_, i) => { const x = i * 0.2; return `${ch.X(x)},${ch.Y(U.plogis(g.b0 + g.b1 * x))}`; }).join(' ') }));
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `The line leaves the band at x = ${f1(S.xc)} (green ring). The dashed logistic S-curve bends and never leaves 0% to 100%.` };
     },
-    solve() { h.set(S.xc, true); }, solveWrong() { h.set(S.xc > 9 ? S.xc - 3 : 12, true); }, info: { xc: S.xc, tol, start: 3 },
+    solve() { h.set(S.xc, true); }, solveWrong() { h.set(S.xc > 9 ? S.xc - 3 : 12, true); }, info: { xc: S.xc, tol, start: 3, xs: S.xs, ks: S.ks, n: S.n, b0: S.fit.b0, b1: S.fit.b1, rising, glm: U.glm(S.xs, S.ks, S.xs.map(() => S.n)) },
   };
 }
 
@@ -207,7 +207,7 @@ function buildScaleFn(ctx) {
       const why = { plogis: 'plogis turns log-odds into a probability', exp: 'exp turns log-odds into odds', qlogis: 'qlogis turns a probability into log-odds', log: 'log turns odds into log-odds' }[C.fn];
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `${why}. Its ring lands exactly on the marker.` };
     },
-    solve() { tiles.pick(C.fn); }, solveWrong() { tiles.pick(['plogis', 'qlogis', 'exp', 'log'].find(f => f !== C.fn && !(f === 'qlogis' && C.from === 'L'))); }, info: { C },
+    solve() { tiles.pick(C.fn); }, solveWrong() { tiles.pick(['plogis', 'qlogis', 'exp', 'log'].find(f => f !== C.fn && !(f === 'qlogis' && C.from === 'L'))); }, info: { C, x, p },
   };
 }
 
@@ -250,7 +250,7 @@ function buildAvgMid(ctx) {
       b.m1 = null; const g1 = b.addMarker(C.m, 'm-logit'), g2 = b.addMarker(C.mp, 'm-prob');
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `The average of the log-odds is ${f1(C.m)}, which is probability ${prob(U.plogis(C.m))}. Averaging the probabilities instead gives ${prob(U.mean(C.p))} (hollow marker).` };
     },
-    solve() { h.set(C.m, true); }, solveWrong() { h.set(C.mp, true); }, info: { m: C.m, mp: C.mp, mid: C.mid, median: C.median, tol, start: h.v },
+    solve() { h.set(C.m, true); }, solveWrong() { h.set(C.mp, true); }, info: { m: C.m, mp: C.mp, mid: C.mid, median: C.median, tol, start: h.v, lg: C.lg, p: C.p },
   };
 }
 // Which flag is the probability the model reports? (X and Y sit on a probability line)
@@ -297,7 +297,7 @@ function buildAvgLever(ctx) {
       const mp = U.mean(b.vals.map(U.plogis));
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `Cell ${names[idx]} had to go to ${prob(U.plogis(need))} to move the average that far. Near the ends of the axis a tiny change in probability is a big step in log-odds.` };
     },
-    solve() { b.handles[idx].set(need, true); }, solveWrong() { b.handles[idx].set(M.clamp(need > 0 ? need - 3.2 : need + 3.2, -6.7, 6.7), true); }, info: { need, T, start: start[idx], idx },
+    solve() { b.handles[idx].set(need, true); }, solveWrong() { b.handles[idx].set(M.clamp(need > 0 ? need - 3.2 : need + 3.2, -6.7, 6.7), true); }, info: { need, T, start: start[idx], idx, vals: vals.map((v, i) => i === idx ? need : v) },
   };
 }
 
@@ -452,7 +452,8 @@ function buildCodeCoef(ctx) {
       const codesApart = cod.b - cod.a;
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + (codesApart === 2 ? `The codes are 2 apart, so the coefficient is half the gap: ${f0(K.slope)}.` : `The codes are ${codesApart > 0 ? '1 apart' : '1 apart, B first'}, so the coefficient is ${codesApart > 0 ? 'the whole gap' : 'the gap with its sign flipped'}: ${f0(K.slope)} (B minus A is ${f0(mB - mA)}).`) };
     },
-    solve() { h.set(M.clamp(target, 0, 100), true); }, solveWrong() { h.set(M.clamp(K.intercept + (mB - mA) * (key === 'one' ? 1 : -1) + 0, 0, 100) === target ? 50 : M.clamp(K.intercept + (mB - mA) * (key === 'one' ? 1 : -1), 0, 100), true); },
+    solve() { h.set(M.clamp(target, 0, 100), true); },
+    solveWrong() { const c = [K.intercept - K.slope, K.intercept + 2 * K.slope, K.intercept + (mB - mA)].find(v => v >= 0 && v <= 100 && Math.abs(v - target) > tol + 1); h.set(c == null ? K.intercept : c, true); },
     info: { key, K, tol, target, mA, mB, start: K.intercept },
   };
 }
@@ -522,9 +523,8 @@ function buildInterTut(ctx) {
   return { solve: () => api.h.set(95, true) };
 }
 function buildInterGoal(ctx) {
-  const rng = ctx.rng, m = interMeans(rng, { mode: 'cross' }), goal = U.pick(rng, ['parallel', 'flat', 'mirror']);
-  const e1 = m[1][0] - m[0][0]; let target;
-  if (goal === 'parallel') target = m[0][1] + e1; else if (goal === 'flat') target = m[0][1]; else target = m[0][1] - e1;
+  const rng = ctx.rng, goal = U.pick(rng, ['parallel', 'flat', 'mirror']); let m, e1, target;
+  for (;;) { m = interMeans(rng, { mode: 'cross' }); e1 = m[1][0] - m[0][0]; target = goal === 'parallel' ? m[0][1] + e1 : goal === 'flat' ? m[0][1] : m[0][1] - e1; if (target >= 8 && target <= 92 && Math.abs(target - m[1][1]) >= 12) break; }
   const startV = m[1][1];
   const text = { parallel: 'Make the two lines <b>parallel</b> (no interaction).', flat: 'Make the <b>blue</b> line flat: A has no effect when B is B2.', mirror: 'Make blue\'s effect of A the <b>exact opposite</b> of orange\'s.' }[goal];
   ctx.setPrompt('Drag the blue square at A2. ' + text);
@@ -539,7 +539,7 @@ function buildInterGoal(ctx) {
       const ok = Math.abs(api.h.v - target) <= tol; api.h.lock();
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + { parallel: 'Parallel lines mean A has the same effect at both levels of B. The interaction (the difference of the two effects) is 0.', flat: 'A flat line means no effect of A at B2, while orange still has one: so they differ, and that difference is the interaction.', mirror: 'Opposite effects: the difference between the two effects is as large as it can be for these lines.' }[goal] };
     },
-    solve() { api.h.set(target, true); }, solveWrong() { api.h.set(M.clamp(target + (target > 50 ? -30 : 30), 2, 98), true); }, info: { target, tol, start: startV, goal, e1 },
+    solve() { api.h.set(target, true); }, solveWrong() { api.h.set(M.clamp(target + (target > 50 ? -30 : 30), 2, 98), true); }, info: { target, tol, start: startV, goal, e1, m },
   };
 }
 function buildInterGap(ctx) {

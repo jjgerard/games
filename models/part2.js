@@ -58,9 +58,9 @@ function buildSimpson(ctx) {
       const s = (h.v - cy) / (10 - cx), ok = Math.abs(s - D.within) <= tol; h.lock();
       D.pts.forEach((p, i) => { const f = U.lm(p.x, p.y); ch.add(sv('line', { class: 'ownln', x1: ch.X(p.x[0]), x2: ch.X(p.x[4]), y1: ch.Y(f.b0 + f.b1 * p.x[0]), y2: ch.Y(f.b0 + f.b1 * p.x[4]), stroke: PEOPLE[i].col })); });
       const pl = U.lm(D.allx, D.ally); ch.add(sv('line', { class: 'avgln', x1: ch.X(0), x2: ch.X(10), y1: ch.Y(pl.b0), y2: ch.Y(pl.b0 + pl.b1 * 10) }));
-      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `Within each person the trend is about ${f1(D.within)} (their own thin lines). Pooling all dots as if independent gives ${f1(D.pooled)} (dashed): it mixes people with each other.` };
+      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `Within each person the trend is about ${f1(D.within)} (thin lines). Pooling all dots as if independent gives ${f1(D.pooled)} (dashed): it mixes people up.` };
     },
-    solve() { h.set(yEnd(D.within), true); }, solveWrong() { h.set(M.clamp(yEnd(D.pooled), lo + 0.5, hi - 0.5), true); }, info: { within: D.within, pooled: D.pooled, tol, start: yEnd(0) },
+    solve() { h.set(yEnd(D.within), true); }, solveWrong() { h.set(M.clamp(yEnd(D.pooled), lo + 0.5, hi - 0.5), true); }, info: { within: D.within, pooled: D.pooled, tol, start: yEnd(0), pts: D.pts },
   };
 }
 
@@ -213,7 +213,7 @@ function buildRIMatch(ctx) {
     check() { const ok = hs.every((h, i) => Math.abs(h.v - D.bh * 5 - D.own[i]) <= tol); hs.forEach(h => h.lock()); D.own.forEach((a, i) => ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(5), cy: ch.Y(a + D.bh * 5) }), ch.over));
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + 'Each person\'s own intercept is how far their line sits from the group line. A random-intercept model treats these gaps as draws from one spread of people.' }; },
     solve() { hs.forEach((h, i) => h.set(D.own[i] + D.bh * 5, true)); }, solveWrong() { hs.forEach((h, i) => h.set(M.clamp(D.grand + D.bh * 5, lo + 0.5, hi - 0.5) + (i === 0 ? 0 : 0), true)); },
-    info: { own: D.own, grand: D.grand, bh: D.bh, tol, starts: startOff },
+    info: { own: D.own, grand: D.grand, bh: D.bh, tol, starts: startOff, pts: D.pts },
   };
 }
 function buildPull(ctx) {
@@ -258,7 +258,7 @@ const BUILD_BANK = [
   { d: '<b>cond</b> is within people. People differ in baseline and in cond effect; the two may be related.', tiles: ['(1 + cond | subj)', '(1 | subj)', '(0 + cond | subj)', '(1 | cond)'], want: ['(1 + cond | subj)'] },
   { d: 'As before, but baseline and effect of cond are <b>unrelated</b> across people.', tiles: ['(1 | subj)', '(0 + cond | subj)', '(1 + cond | subj)', '(1 | cond)'], want: ['(1 | subj)', '(0 + cond | subj)'] },
   { d: '<b>Classrooms</b> nest in <b>schools</b> (class labels repeat in every school). Both differ in baseline.', tiles: ['(1 | school)', '(1 | school:classroom)', '(1 | classroom)', '(1 | school/classroom)'], want: ['(1 | school)', '(1 | school:classroom)'], alt: [['(1 | school/classroom)']] },
-  { d: '<b>cond</b> is within people and items. Both differ in baseline and in cond effect.', tiles: ['(1 + cond | subj)', '(1 + cond | item)', '(1 | subj)', '(1 | item)', '(cond | subj:item)'], want: ['(1 + cond | subj)', '(1 + cond | item)'] },
+  { d: '<b>cond</b> is within people and items. Both differ in baseline and in cond effect.', tiles: ['(1 + cond | subj)', '(1 + cond | item)', '(1 | subj)', '(cond | subj:item)'], want: ['(1 + cond | subj)', '(1 + cond | item)'] },
 ];
 function buildFormBuild(ctx) {
   const rng = ctx.rng, B = U.pick(rng, BUILD_BANK), tiles = U.shuffle(rng, B.tiles);
@@ -384,7 +384,7 @@ function buildEstCells(ctx) {
   return {
     check() { const got = chips.keys().sort(), ok = JSON.stringify(got) === JSON.stringify(want); chips.lock(); for (const k of ['p', 'i', 'pi']) chips.btns[k].classList.add(est[k] ? 'right' : 'wrongc');
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + 'A term needs some group seen more than once. Otherwise groups equal answers and lme4 refuses.' }; },
-    solve() { chips.setAll(Object.fromEntries(want.map(k => [k, true]))); }, solveWrong() { chips.setAll(Object.fromEntries(['p', 'i', 'pi'].map(k => [k, !est[k]]))); }, info: { kind: D.kind, est, want },
+    solve() { chips.setAll(Object.fromEntries(want.map(k => [k, true]))); }, solveWrong() { chips.setAll(Object.fromEntries(['p', 'i', 'pi'].map(k => [k, !est[k]]))); }, info: { kind: D.kind, est, want, m: D.m },
   };
 }
 function buildEstSlope(ctx) {
@@ -400,7 +400,7 @@ function buildEstSlope(ctx) {
     check() { const got = chips.keys().sort(), ok = JSON.stringify(got) === JSON.stringify(want); chips.lock(); for (const k of ['int', 'slope']) chips.btns[k].classList.add(est[k] ? 'right' : 'wrongc');
       const why = { within2: 'Each person has repeats in both conditions, so both their baseline and their condition effect can be measured.', within1: 'One answer per person per condition: a person\'s effect and the noise are the same thing. lme4 stops: observations <= random effects.', between: 'Each person is in one condition only, so no one has an effect of condition to vary. lme4 may still fit it, but the slope variance means nothing.' }[kind];
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + why }; },
-    solve() { chips.setAll(Object.fromEntries(want.map(k => [k, true]))); }, solveWrong() { chips.setAll(Object.fromEntries(['int', 'slope'].map(k => [k, !est[k]]))); }, info: { kind, est, want },
+    solve() { chips.setAll(Object.fromEntries(want.map(k => [k, true]))); }, solveWrong() { chips.setAll(Object.fromEntries(['int', 'slope'].map(k => [k, !est[k]]))); }, info: { kind, est, want, counts },
   };
 }
 
@@ -510,10 +510,10 @@ function buildEmpty(ctx) {
   };
 }
 const SCENARIOS = [
-  { msg: 'number of levels of each grouping factor must be < number of observations (problems: p:i)', best: 'Count answers per cell: is each cell measured once?', others: ['Add more random slopes', 'Ignore it: the fixed effects are fine'], why: 'This error is a fact about the design: there is one answer per participant × item, so that term cannot be separated from noise. Inspect the design before adding terms.' },
+  { msg: 'number of levels of each grouping factor must be < number of observations (problems: p:i)', best: 'Count answers per cell: is each cell measured once?', others: ['Add more random slopes', 'Ignore it: the fixed effects are fine'], why: 'One answer per participant × item: that term cannot be told from noise. Inspect the design before adding terms.' },
   { msg: 'boundary (singular) fit: see help(\'isSingular\')', best: 'Simplify the random part (drop the slope or the correlation)', others: ['Add more random slopes', 'Ignore it: it only looks scary'], why: 'A singular fit says the random structure is richer than the data can support. Simplify, or check that the design can estimate it.' },
   { msg: 'fixed-effect model matrix is rank deficient so dropping 1 column / coefficient', best: 'Look for an empty cell: table() the factors', others: ['Add a random slope', 'Change the optimiser'], why: 'A dropped column means two fixed terms say the same thing, usually because a cell is empty. Random terms do not fix that.' },
-  { msg: 'number of observations (=24) <= number of random effects (=24) for term (1 + cond | id)', best: 'Check whether each person has repeats in each condition', others: ['Increase the iteration limit', 'Add a second random slope'], why: 'With one answer per person per condition, a person\'s condition effect cannot be told from noise. It is about the design, not the optimiser.' },
+  { msg: 'number of observations (=24) <= number of random effects (=24) for term (1 + cond | id)', best: 'Check whether each person has repeats in each condition', others: ['Increase the iteration limit', 'Add a second random slope'], why: 'One answer per person per condition: a person\'s effect cannot be told from noise. A design problem, not an optimiser one.' },
 ];
 function buildWhat(ctx) {
   const rng = ctx.rng, S = U.pick(rng, SCENARIOS), opts = U.shuffle(rng, [S.best, ...S.others]);
@@ -589,7 +589,7 @@ function buildTypical(ctx) {
   return {
     check() { const ok = Math.abs(h.v - C.med) <= tol; h.lock(); ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(C.med), cy: 134 }), ch.over); const g = ch.add(marker('dia', 8, 'mkhollow'), ch.over); g.setAttribute('transform', `translate(${ch.X(C.mean)},134)`);
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `plogis(${f1(C.mu)}) = ${prob(C.med)} is the typical (middle) person. The average of everyone's probabilities is ${prob(C.mean)} (hollow diamond), pulled toward .5.` }; },
-    solve() { h.set(C.med, true); }, solveWrong() { h.set(M.clamp(C.mean, 0.02, 0.98), true); }, info: { med: C.med, mean: C.mean, tol, start },
+    solve() { h.set(C.med, true); }, solveWrong() { h.set(M.clamp(C.mean, 0.02, 0.98), true); }, info: { med: C.med, mean: C.mean, tol, start, mu: C.mu, sd: C.sd, ps: C.ps },
   };
 }
 
@@ -626,7 +626,7 @@ function buildWriteSlots(ctx) {
   return {
     check() { const ok = +tiles.key === C.ans; tiles.lock(); tiles.mark(String(C.ans), 'right'); if (!ok) tiles.mark(tiles.key, 'wrongc');
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + 'The table is in log-odds. Report log-odds as they are, odds ratios with exp(), and probabilities with plogis() of the whole sum.' }; },
-    solve() { tiles.pick(String(C.ans), true); }, solveWrong() { tiles.pick(String((C.ans + 1) % 3), true); }, info: { kind: C.kind, ans: C.ans },
+    solve() { tiles.pick(String(C.ans), true); }, solveWrong() { tiles.pick(String((C.ans + 1) % 3), true); }, info: { kind: C.kind, ans: C.ans, b0: C.b0, b1: C.b1, values: C.T.t.map(t => t[2]) },
   };
 }
 const INTERCEPT_BANK = [

@@ -354,15 +354,18 @@ const U7 = {
   subs: [
     tutorial('u7-first', 'Install once', 'Get a package', 'install.packages("name") downloads a package, once.', ctx =>
       E.choice(ctx, { prompt: 'You have never used the package <b>tidyr</b>. Tap the line that gets it onto your computer.', pic: null, options: ['install.packages("tidyr")'], answer: 0, tutorial: true, code: true, done: 'That downloads it, once. Each new session you then switch it on with library(tidyr).' })),
-    streak('u7-pkg', 'Once, or every time?', 'install vs library', 'install.packages("x") downloads x once (name in quotes). library(x) switches it on, at the top of each session.', ctx => {
-      const r = ctx.rng, p = RG.pick(r, ['tidyr', 'dplyr', 'ggplot2', 'lme4']), first = r() < .5;
-      return E.choice(ctx, { prompt: first ? `First time ever using <b>${p}</b>. Which line?` : `Start of a new session. <b>${p}</b> is already downloaded. Which line?`, options: [`install.packages("${p}")`, `install.packages(${p})`, `library(${p})`], answer: first ? `install.packages("${p}")` : `library(${p})`, code: true,
-        explain: first ? `install.packages("${p}") downloads it, once, with the name in quotes.` : `library(${p}) switches on a package you already have. No download.`, rcheck: [{ kind: 'syntax', code: first ? `install.packages("${p}")` : `library(${p})` }] });
+    streak('u7-pkg', 'Once, or every time?', 'Which lines to run again?', 'install.packages("x") downloads a package once (the name is text, so in quotes). library(x) switches it on, so it goes at the top of every session.', ctx => {
+      const r = ctx.rng, p = RG.pick(r, ['tidyr', 'dplyr', 'ggplot2', 'lme4']), f = RG.pick(r, ['scores.csv', 'data.csv']);
+      const others = RG.sample(r, [`my_data = read.csv("${f}")`, 'x = c(1, 2, 3)', 'total = sum(x)', 'x'], 2);
+      const lines = RG.shuffle(r, [`install.packages("${p}")`, `library(${p})`, ...others]);
+      const ans = lines.map((l, i) => l.startsWith('install.packages') ? -1 : i).filter(i => i >= 0);
+      return E.pick(ctx, { prompt: `New session. <b>${p}</b> was downloaded last week. Tap every line you must run <b>again</b>.`, mode: 'line', items: lines, answer: ans, explain: `Downloading is once only. library(${p}) has to be run in every new session, together with your other code.`,
+        rcheck: [{ kind: 'syntax', code: `install.packages("${p}")` }, { kind: 'syntax', code: `library(${p})` }] });
     }),
     streak('u7-where', 'Where does R look?', 'The working folder', 'read.csv("data.csv") looks for that file in the working folder. The same name in another folder is a different file.', ctx => {
       const r = ctx.rng, folders = ['study1', 'study2', 'old'], wd = RG.pick(r, folders), has = r() < .7, f = RG.pick(r, ['data.csv', 'scores.csv']);
-      const show = folders.map(x => x === wd && !has ? `${x}/other.csv` : `${x}/${f}`).concat(has ? [] : ['error: no such file']);
-      const answer = has ? folders.indexOf(wd) : 3;
+      const base = folders.map(x => x === wd && !has ? `${x}/other.csv` : `${x}/${f}`).concat(has ? [] : ['error: no such file']), target = has ? `${wd}/${f}` : 'error: no such file';
+      const show = RG.shuffle(r, base), answer = show.indexOf(target);
       return E.pick(ctx, { prompt: `R's working folder is <b>${wd}</b>. Tap what <code>read.csv("${f}")</code> opens.`, mode: 'drawer', single: true, items: show, answer: [answer],
         explain: has ? `R only looks in ${wd}, so it opens ${wd}/${f}.` : `${wd} has no ${f}, so R stops with an error. Files in other folders do not count.`, rcheck: [] });
     }),
@@ -442,9 +445,9 @@ const U8 = {
         explain: `The pair ${pat.join(', ')} is repeated down the column.`, rcheck: [{ setup: '', expr: `data.frame(id = 1:${n}, g = ${rvec(pat)})`, expect: dfSpec(['id', 'g'], out.map((x, i) => [i + 1, x])) }] });
     }),
     streak('u8-fit', 'Will it fit?', 'Recycle, or error?', 'A shorter column is recycled only if its length divides the longer one evenly. Otherwise R stops with an error.', ctx => {
-      const r = ctx.rng, pairs = [[6, 2], [6, 3], [4, 2], [6, 4], [6, 5], [4, 3], [6, 1], [5, 2]], [n, m] = RG.pick(r, pairs), fits = n % m === 0;
-      const opts = ['6 rows', '4 rows', '5 rows', 'error']; const show = [`${n} rows`, 'error', ...[4, 5, 6, 3].filter(x => x !== n).slice(0, 2).map(x => `${x} rows`)];
-      return E.choice(ctx, { prompt: `What happens?`, pic: codebox([`data.frame(a = 1:${n}, b = 1:${m})`]), options: show, answer: fits ? `${n} rows` : 'error', explain: fits ? `${m} goes evenly into ${n}, so b is recycled and the table has ${n} rows.` : `${m} does not go evenly into ${n}, so R refuses: "arguments imply differing number of rows".`,
+      const r = ctx.rng, pairs = [[6, 2], [6, 3], [4, 2], [6, 1], [4, 1], [6, 4], [6, 5], [4, 3]], [n, m] = RG.pick(r, pairs), fits = n % m === 0;
+      const show = [`${n} rows`, 'an error', ...[4, 5, 6, 3].filter(x => x !== n).slice(0, 2).map(x => `${x} rows`)];
+      return E.choice(ctx, { prompt: `What happens?`, pic: codebox([`data.frame(a = 1:${n}, b = 1:${m})`]), options: show, answer: fits ? `${n} rows` : 'an error', explain: fits ? `${m} goes evenly into ${n}, so b is recycled and the table has ${n} rows.` : `${m} does not go evenly into ${n}, so R refuses: "arguments imply differing number of rows".`,
         rcheck: [fits ? R1(`nrow(data.frame(a = 1:${n}, b = 1:${m}))`, [n]) : { kind: 'error', setup: '', code: `data.frame(a = 1:${n}, b = 1:${m})`, contains: 'differing number of rows' }] });
     }),
     streak('u8-random', 'New numbers each run?', 'Random or fixed', 'runif, rnorm, sample and rbinom give new numbers every run. Plain values, 1:3 and rep are the same every time. After set.seed(n), random lines repeat too.', ctx => {

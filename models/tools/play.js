@@ -131,7 +131,7 @@ async function checkFit(page, label) {
     const n = await page.evaluate(() => PLACEMENT.length);
     for (let i = 0; i < n; i++) {
       await page.waitForSelector('#stage > *'); await checkFit(page, `placement ${mode} item ${i + 1}`);
-      await page.evaluate(m => m === 'right' || i > 0 ? __run.ctrl.solve() : __run.ctrl.solveWrong(), mode);
+      await page.evaluate(([m, i]) => m === 'right' || i > 0 ? __run.ctrl.solve() : __run.ctrl.solveWrong(), [mode, i]);
       await page.click('#quiz-action'); await page.click('#quiz-action');
     }
     const txt = await page.textContent('#stage');
