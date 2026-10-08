@@ -132,7 +132,7 @@ const HELP = {
   general: `<p>Every puzzle is a picture you can move: drag dots and bars, tap cells in a model table, colour in a design grid, assemble formula tiles. You never type R and nothing needs calculating.</p>
     <p>Most sub-levels need <b>5 right in a row</b> (10 on the key drills). You can miss twice (&hearts;&hearts;); a third miss starts the run again. Every answer is explained.</p>
     <p>Part 1 is about regression and the scales a model speaks in. Part 2 is about mixed-effects models. Do Part 1 first: the most common snag in Part 2 is really a Part 1 snag.</p>`,
-  about: `<p><b>Models and scales</b> teaches how to <i>interpret</i> regression and mixed-effects models. R is only the tool that produced the tables; the answer keys were checked against real R (lm, glm and lme4).</p>
+  about: `<p><b>Scale Model</b> teaches how to <i>interpret</i> regression and mixed-effects models. R is only the tool that produced the tables; the answer keys were checked against real R (lm, glm and lme4).</p>
     <p>Nothing here is graded or watched. Your progress and points are saved on this device only, and nothing is sent anywhere.</p>
     <p>Every example uses made-up, neutral data. Where a picture has numbers, they come from real model fits or from closed-form results checked in R.</p>`,
 };

@@ -1,4 +1,4 @@
-# Models and scales
+# Scale Model
 
 A phone-first game that teaches how to **interpret** regression and mixed-effects models, by trial and error. R is only the tool that produced the tables: nothing is typed, nothing is calculated by the player. No build step, no accounts, no server: open `index.html` from any static host. Progress is saved on the device only (`localStorage` key `models:v1`). `?seed=123` in the URL makes a run repeatable.
 

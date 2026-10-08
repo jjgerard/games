@@ -1,4 +1,4 @@
-# Bag of Shapes (working title)
+# Educated Guess
 
 A phone-first game that teaches Bayesian statistics from the very beginning, by trial and error. No build step, no accounts, no server: open `index.html` from any static host. Progress is saved on the device only.
 

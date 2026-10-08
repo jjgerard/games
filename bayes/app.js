@@ -125,7 +125,7 @@ const HELP = {
   general: `<p>Every puzzle is a picture you can move: draw shapes from bags, slide dividers, place chips.</p>
     <p>Most sub-levels need <b>5 right in a row</b>. You can miss twice (♥♥); a third miss starts the run again. The answer is always explained, and you will often see a picture of why.</p>
     <p>You never have to calculate anything. If an answer is within a little of right, it counts.</p>`,
-  about: `<p><b>Bag of Shapes</b> (working title) teaches Bayesian statistics from the very beginning, by trial and error: shapes, bags, and changing your mind when evidence arrives.</p>
+  about: `<p><b>Educated Guess</b> teaches Bayesian statistics from the very beginning, by trial and error: shapes, bags, and changing your mind when evidence arrives.</p>
     <p>Nothing here is graded or watched. Your progress and points are saved on this device only, and nothing is sent anywhere.</p>
     <p>Unit 0 needs no maths at all. Later units follow the chapters of <i>Bayesian Data Analysis for Cognitive Science</i> (Nicenboim, Schad &amp; Vasishth), with original examples.</p>`,
 };

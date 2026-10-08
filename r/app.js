@@ -130,7 +130,7 @@ const HELP = {
     <p>Most sub-levels need <b>5 right in a row</b> (10 for the big ideas). You can miss twice (♥♥); a third miss starts the run again. The answer is always explained.</p>
     <p>Tiles: tap a tile to drop it into the next gap, or drag it to a gap you choose. Tap a filled gap to take the tile back.</p>
     <p>The first sub-level of each unit has only one possible move, and it flashes.</p>`,
-  about: `<p><b>R from Zero</b> teaches R from the very first line, in two parts: <b>Part 1</b> is base R (values, variables, vectors, indexing, tables, packages, random numbers, the apply family) and <b>Part 2</b> is tidy R (the pipe, filter, mutate, group_by and summarise, joins, pivots, ggplot2).</p>
+  about: `<p><b>Plot Development</b> teaches R from the very first line, in two parts: <b>Part 1</b> is base R (values, variables, vectors, indexing, tables, packages, random numbers, the apply family) and <b>Part 2</b> is tidy R (the pipe, filter, mutate, group_by and summarise, joins, pivots, ggplot2).</p>
     <p>Nothing here is graded or watched. Your progress is saved on this device only, and nothing is sent anywhere.</p>
     <p>Statistics are out of scope: you learn to run a function and read its output, not what a test means. Every answer was checked by running the code in real R.</p>`,
 };

@@ -4,9 +4,9 @@ Short, visual, mobile-first browser games that teach statistics and R from a muc
 
 | Game | Folder | Topic |
 |---|---|---|
-| Bag of Shapes | [`bayes/`](bayes/) | Bayesian statistics, from "what is a share?" to hierarchical models |
-| R from zero | [`r/`](r/) | Part 1 base R, Part 2 tidy R |
-| Models and scales | [`models/`](models/) | Part 1 regression and scales, Part 2 mixed-effects models |
+| Educated Guess | [`bayes/`](bayes/) | Bayesian statistics, from "what is a share?" to hierarchical models |
+| Plot Development | [`r/`](r/) | Part 1 base R, Part 2 tidy R |
+| Scale Model | [`models/`](models/) | Part 1 regression and scales, Part 2 mixed-effects models |
 
 The landing page is [`index.html`](index.html), with an [`about.html`](about.html) page.
 

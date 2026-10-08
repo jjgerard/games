@@ -1,4 +1,4 @@
-# R from Zero (working title)
+# Plot Development
 
 A phone-first game that teaches R from the very first line, in two parts: **Part 1, base R** (Game B1 in `../docs/level-plan.md`, ordered by the `Introduction_to_R` slides plus the simulation and apply chats) and **Part 2, tidy R** (Game B2, from the tidy R chat). No build step, no accounts, no server, no keyboard: open `index.html` from any static host. Progress is saved on the device only (`localStorage` key `rgame:v1`). `?seed=123` makes questions repeatable.
 
