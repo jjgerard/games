@@ -504,7 +504,6 @@ const UT10 = {
       ][t];
       return E.pick(ctx, { prompt: 'The idea is right but one part is wrong. Tap it.', mode: 'token', single: true, items: cases.toks, answer: [cases.ans], explain: cases.why, rcheck: [] });
     }),
-    streak('t10-read', 'Read it aloud', 'What is one row at the end?', 'Read each step in turn. The last step that collapses rows decides what one row is.', ctx => UT6.subs[4].build(ctx)),
   ],
 };
 

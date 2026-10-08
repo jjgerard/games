@@ -88,6 +88,8 @@ function dragify(node, { onTap, onDrop, ghostClass = 'ghost' }) {
 
 const PUNCT = { ',': 'comma', '(': 'open bracket', ')': 'close bracket', '[': 'open square bracket', ']': 'close square bracket', '=': 'equals', '==': 'double equals', '<-': 'arrow', '+': 'plus', '%>%': 'pipe', '|>': 'pipe', '|': 'or', '&': 'and', '$': 'dollar sign', ':': 'colon', '#': 'hash', '!=': 'not equal', '<': 'less than', '>': 'greater than', '~': 'tilde', '"': 'quote', '{': 'open curly bracket', '}': 'close curly bracket' };
 const nameFor = t => PUNCT[t] ? `${t} (${PUNCT[t]})` : t;
+const ACTION = /\b(Tap|tap|Drag|Fill|Press|Link|Match|Put|Sort|Drop|Set)\b/;
+const ask = (p, add) => ACTION.test(p) ? p : p + ' ' + add;
 const alts = a => Array.isArray(a) ? a : [a];
 
 // ---------------- the grid: vectors, matrices, data frames ----------------
@@ -148,7 +150,7 @@ function flash(n) { if (n) n.classList.add('flash'); }
 // =====================================================================
 const E = {};
 E.assemble = (ctx, c) => {
-  ctx.setPrompt(c.prompt);
+  ctx.setPrompt(ask(c.prompt, 'Drop the tiles into the gaps.'));
   const lines = c.lines || [c.parts];
   const tiles = []; let nextId = 0;
   const slots = {}, order = [], placed = {};
@@ -242,7 +244,7 @@ E.assemble = (ctx, c) => {
 //      items (token/line/drawer texts), answer: [ids] (single => one id), single, tutorial, only
 // =====================================================================
 E.pick = (ctx, c) => {
-  ctx.setPrompt(c.prompt);
+  ctx.setPrompt(ask(c.prompt, 'Tap your answer.'));
   const wrap = el('div', { class: 'stagecol' });
   if (c.lead && c.mode !== 'line') wrap.append(codebox(c.lead));
   const items = {}; // id -> node
@@ -325,7 +327,7 @@ E.pick = (ctx, c) => {
 //      tutorial, explain
 // =====================================================================
 E.fill = (ctx, c) => {
-  ctx.setPrompt(c.prompt);
+  ctx.setPrompt(ask(c.prompt, 'Tap a value, then the cells.'));
   const wrap = el('div', { class: 'stagecol' });
   if (c.lead) wrap.append(codebox(c.lead));
   if (c.pic) wrap.append(c.pic);
@@ -398,7 +400,7 @@ E.fill = (ctx, c) => {
 // cfg: prompt, lead[], pic (node), options[], answer (index into options as given, or string), code (mono), tutorial
 // =====================================================================
 E.choice = (ctx, c) => {
-  ctx.setPrompt(c.prompt);
+  ctx.setPrompt(ask(c.prompt, 'Tap one answer.'));
   const wrap = el('div', { class: 'stagecol' });
   if (c.lead) wrap.append(codebox(c.lead));
   if (c.pic) wrap.append(c.pic);
@@ -431,7 +433,7 @@ E.choice = (ctx, c) => {
 // cfg: prompt, lead[], pic, answer n, max, unit
 // =====================================================================
 E.count = (ctx, c) => {
-  ctx.setPrompt(c.prompt);
+  ctx.setPrompt(ask(c.prompt, 'Set it with + and −.'));
   const wrap = el('div', { class: 'stagecol' });
   if (c.lead) wrap.append(codebox(c.lead, { cls: 'hideonreview' }));
   const picBox = el('div', { class: 'picbox' }); if (c.pic) picBox.append(c.pic); wrap.append(picBox);

@@ -161,7 +161,7 @@ function buildBound(ctx) {
 // Unit 3: Three scales
 // ---------------------------------------------------------------------------
 function buildScaleTut(ctx) {
-  ctx.setPrompt('Drag the flashing marker to the right. One chance, three ways to write it.');
+  ctx.setPrompt('Drag the flashing marker on the Probability line to the right. The Odds and Log-odds markers show the same chance.');
   const s = Scales3(ctx, { p: 0.2, pulse: 'P', drag: ['P'], onChange: p => { if (p >= 0.88) { s.lock(); ctx.complete('The same chance has three names: a probability, odds, and log-odds. Moving one moves all three.'); } } });
   return { solve: () => s.setP(0.9, true) };
 }
