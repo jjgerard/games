@@ -260,3 +260,12 @@ button.lamp { color: #12323a; } button.lamp[aria-pressed="true"] { background: v
 .gc { transition: opacity .3s; }
 .bin.ok { border-color: var(--good); }
 .gutter { padding: 0 5px; min-width: 22px; }
+.stmt .fx { white-space: pre-wrap; overflow-wrap: anywhere; }
+.stmtbox { background: var(--codebg); border-radius: 12px; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; }
+.stmtbox .stmt { background: none; padding: 0; border-radius: 0; }
+.quiz-body.reviewing .hideonreview { display: none; }
+.afterbox { border-left: 6px solid var(--good); padding-left: 6px; }
+.matchcols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.mbtn { overflow-wrap: anywhere; }
+.stagecol { gap: 6px; }
+.grid { gap: 2px; }

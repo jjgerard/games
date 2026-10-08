@@ -104,6 +104,7 @@ const inPage = () => {
       for (const t of r.targets) { const m = Math.min(t.w, t.h); if (m < 24) add('TARGET<24', t.sig, `${t.w}x${t.h} "${t.name.slice(0, 18)}"`, tag + ' ' + label); else if (m < minT) add(`TARGET<${minT}`, t.sig, `${t.w}x${t.h} "${t.name.slice(0, 18)}"`, tag + ' ' + label); }
       for (const p of r.pictures) {
         if (p.kind === 'shelfbag') { if (p.w < (small ? 56 : 60)) add('PICTURE', p.sig, `shelf bag ${p.w}px wide`, tag + ' ' + label); if (p.shape != null && p.shape < 9) add('PICTURE', p.sig, `shelf shapes only ${p.shape}px`, tag + ' ' + label); }
+        else if (p.kind === 'chart') { if (p.w < 120) add('PICTURE', p.sig, `chart ${p.w}px wide`, tag + ' ' + label); }
         else if (p.kind === 'bag') { if (p.w < (small ? 64 : 80)) add('PICTURE', p.sig, `bag ${p.w}px wide (need ${small ? 64 : 80})`, tag + ' ' + label); if (p.shape != null && p.shape < (small ? 8 : 9)) add('PICTURE', p.sig, `shapes inside only ${p.shape}px across (need ${small ? 8 : 9})`, tag + ' ' + label); }
         else if (p.kind === 'gridshape' && p.w < 34) add('PICTURE', p.sig, `${p.w}px`, tag + ' ' + label);
         else if (p.kind === 'tray' && p.w < 20) add('PICTURE', p.sig, `${p.w}px`, tag + ' ' + label);

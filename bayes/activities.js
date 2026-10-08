@@ -398,15 +398,3 @@ const UNITS = [
     ],
   },
 ];
-
-// ---------------------------------------------------------------------------
-// Placement: six pictures, no teaching, no feedback. Each tests the idea one
-// sub-level builds, so the first one missed is where to start.
-// ---------------------------------------------------------------------------
-const PLACEMENT = [
-  { id: 'u0-share', unlocks: ['u0-draw', 'u0-slide', 'u0-share', 'u0-many'], build: ctx => buildShare(ctx, 'bag') },
-  { id: 'u0-flip', unlocks: ['u0-flip'], build: ctx => buildInside(ctx, true) },
-  { id: 'u0-two', unlocks: ['u0-two', 'u0-several'], build: ctx => buildTwoBags(ctx, false) },
-  { id: 'u0-rare', unlocks: ['u0-rare'], build: ctx => buildTwoBags(ctx, true) },
-  { id: 'u0-chips', unlocks: ['u0-chips'], build: buildChips },
-];

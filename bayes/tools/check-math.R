@@ -1,5 +1,5 @@
 # Independent check of math.js: run `node tools/check-math.js | Rscript tools/check-math.R`
-suppressMessages(library(jsonlite))
+suppressMessages(library(jsonlite)); suppressMessages(library(lme4))
 x <- fromJSON(file("stdin"), simplifyVector = FALSE)
 ok <- function(label, cond) cat(sprintf("%-4s %s\n", if (isTRUE(cond)) "PASS" else "FAIL", label))
 lik <- function(p, s) if (s == "c") p else 1 - p
@@ -37,3 +37,24 @@ for (e in x$three) {
   lik <- sapply(ps, function(p) prod(ifelse(s == "c", p, 1 - p))); pr <- w / sum(w); post <- pr * lik / sum(pr * lik)
   ok("prior x likelihood = posterior", all(abs(post - unlist(e$value$post)) < 1e-9) && all(abs(lik - unlist(e$value$lik)) < 1e-9) && all(abs(pr - unlist(e$value$prior)) < 1e-9))
 }
+
+# ---- Units 2-6 helpers
+n <- x$norm
+ok("normal density", all(abs(dnorm(unlist(n$xs), 1, 2) - unlist(n$pdf)) < 1e-10))
+ok("normal cdf", all(abs(pnorm(unlist(n$xs), 1, 2) - unlist(n$cdf)) < 1e-10))
+ok("normal quantile", all(abs(qnorm(unlist(n$q), 1, 2) - unlist(n$quant)) < 1e-8))
+for (e in x$bb) {
+  a <- unlist(e$args); P <- sapply(0:a[1], function(k) integrate(function(p) dbinom(k, a[1], p) * dbeta(p, a[2], a[3]), 0, 1, rel.tol = 1e-10)$value)
+  ok(sprintf("beta-binomial pmf n=%d a=%g b=%g (by integration)", a[1], a[2], a[3]), all(abs(P - unlist(e$pmf)) < 1e-7))
+  ok(sprintf("binomial pmf n=%d p=%.2f", a[1], a[2] / (a[2] + a[3])), all(abs(dbinom(0:a[1], a[1], a[2] / (a[2] + a[3])) - unlist(e$bin)) < 1e-10))
+  cs <- cumsum(P); ok(sprintf("90%% bracket n=%d a=%g b=%g", a[1], a[2], a[3]), all(c(which(cs >= .05 - 1e-12)[1] - 1, which(cs >= .95 - 1e-12)[1] - 1) == unlist(e$bracket)))
+}
+o <- x$ols; f <- lm(y ~ x, data.frame(x = unlist(o$x), y = unlist(o$y))); s <- summary(f)$coefficients
+ok("ols intercept, slope, sigma", abs(coef(f)[[1]] - o$fit$a) < 1e-9 && abs(coef(f)[[2]] - o$fit$b) < 1e-9 && abs(sigma(f) - o$fit$sigma) < 1e-9)
+ok("ols standard errors", abs(s[1, 2] - o$fit$seA) < 1e-9 && abs(s[2, 2] - o$fit$seB) < 1e-9)
+sm <- x$sampler; ok("beta sampler mean and quantiles (40000 draws)", abs(sm$a / (sm$a + sm$b) - sm$mean) < 0.004 && all(abs(qbeta(c(.1, .5, .9), sm$a, sm$b) - unlist(sm$q)) < 0.006))
+g <- x$anova$groups; d <- data.frame(y = unlist(lapply(g, unlist)), g = factor(rep(seq_along(g), each = length(g[[1]]))))
+m <- suppressMessages(lmer(y ~ 1 + (1 | g), d, REML = TRUE)); mm <- tapply(d$y, d$g, mean)
+ok("anova pooling weight matches lme4 shrinkage", abs(mean((fixef(m)[[1]] + ranef(m)$g[, 1] - mean(mm)) / (mm - mean(mm))) - x$anova$res$w) < 1e-4)
+ok("anova variance components match lme4", abs(as.data.frame(VarCorr(m))$vcov[1] - x$anova$res$tau2) < 1e-4 && abs(sigma(m)^2 - x$anova$res$msw) < 1e-6)
+for (e in x$shrink) { a <- unlist(e$args); ok(sprintf("shrinkage weight tau=%g sigma=%g n=%g (conjugate normal)", a[1], a[2], a[3]), abs((1 / a[1]^2) / (1 / a[1]^2 + a[3] / a[2]^2) - (1 - e$w)) < 1e-12) }

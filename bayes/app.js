@@ -127,7 +127,7 @@ const HELP = {
     <p>You never have to calculate anything. If an answer is within a little of right, it counts.</p>`,
   about: `<p><b>Bag of Shapes</b> (working title) teaches Bayesian statistics from the very beginning, by trial and error: shapes, bags, and changing your mind when evidence arrives.</p>
     <p>Nothing here is graded or watched. Your progress and points are saved on this device only, and nothing is sent anywhere.</p>
-    <p>Unit 0 needs no maths at all. Later units are planned to follow the chapters of <i>Bayesian Data Analysis for Cognitive Science</i> (Nicenboim, Schad &amp; Vasishth), with original examples.</p>`,
+    <p>Unit 0 needs no maths at all. Later units follow the chapters of <i>Bayesian Data Analysis for Cognitive Science</i> (Nicenboim, Schad &amp; Vasishth), with original examples.</p>`,
 };
 let confirmCb = null;
 function confirmDialog(title, msg, ok) { $('confirm-title').textContent = title; $('confirm-message').textContent = msg; confirmCb = ok; openOverlay('confirm-overlay'); }
@@ -166,7 +166,7 @@ function closeActivity() {
   updateHeader();
 }
 $('quiz-close').onclick = () => { if (run.phase === 'idle') return; if (run.phase === 'answering' && run.game && run.game.streak > 0) confirmDialog('Leave this sub-level?', 'Your current run will be lost.', navBack); else navBack(); };
-$('quiz-help').onclick = () => showHelp(run.placement ? 'Find my level' : run.sub.name, run.placement ? `<p>${PLACEMENT.length === 5 ? 'Five' : PLACEMENT.length} quick pictures, with no feedback. The first one you miss is where you will start. You can always go back and play earlier levels.</p>` : `<p>${run.sub.help}</p>`);
+$('quiz-help').onclick = () => showHelp(run.placement ? 'Find my level' : run.sub.name, run.placement ? `<p>${PLACEMENT.length} quick pictures, with no feedback. The first one you miss is where you will start. You can always go back and play earlier levels.</p>` : `<p>${run.sub.help}</p>`);
 
 function buildCtx(onComplete) {
   const stage = $('stage'); stage.innerHTML = '';
@@ -244,20 +244,24 @@ function placementResult() {
   const unlocked = [];
   const upTo = firstMiss === -1 ? PLACEMENT.length : firstMiss;
   for (let i = 0; i < upTo; i++) unlocked.push(...PLACEMENT[i].unlocks);
-  const startSub = firstMiss === -1 ? null : UNITS[0].subs.find(s => !unlocked.includes(s.id));
+  const startSub = firstMiss === -1 ? null : allSubs().find(s => !unlocked.includes(s.id));
+  const lastPlaced = Math.max(...PLACEMENT.flatMap(p => p.unlocks.map(id => UNITS.findIndex(u => u.subs.some(s => s.id === id)))));
   stage.append(el('p', {}, firstMiss === -1
-    ? 'You got every picture right. Unit 0 is marked as done, and Unit 1 is open.'
+    ? `You got every picture right. Units 0 to ${lastPlaced} are marked as done, and Unit ${lastPlaced + 1} is open.`
     : `You got ${upTo} of ${PLACEMENT.length} right before the first miss. You will start at "${startSub.name}", and everything before it is marked as done.`),
     el('div', { class: 'stage-note' }, 'No points for skipped levels. You can replay any of them.'));
   setFeedback('');
   const btn = $('quiz-action'); btn.textContent = 'Start here'; btn.disabled = false; focusAction();
-  run.placementDone = { unlocked };
+  run.placementDone = { unlocked, startSub };
 }
 const placementAfter = () => {
-  const u = run.placementDone.unlocked; UNITS[0].subs.forEach(s => { if (u.includes(s.id)) markDone(s.id, false); });
+  const { unlocked, startSub } = run.placementDone; allSubs().forEach(s => { if (unlocked.includes(s.id)) markDone(s.id, false); });
   state.started = true; save(); navStack.length = 0;
   closeOverlay('quiz-overlay'); run.phase = 'idle'; run.placement = null; run.placementDone = null;
-  history.replaceState({}, ''); renderUnits(); openUnit(UNITS[0]);
+  history.replaceState({}, ''); renderUnits();
+  // open the unit the player lands in: the one holding the first sub-level not yet done
+  const target = UNITS.find(u => u.subs.some(s => !isDone(s.id))) || UNITS[UNITS.length - 1];
+  openUnit(startSub ? UNITS.find(u => u.subs.some(s => s.id === startSub.id)) : target);
 };
 $('quiz-action').addEventListener('click', () => { if (run.phase === 'result') placementAfter(); }, true);
 

@@ -172,8 +172,8 @@ function buildSlopePrior(ctx) {
     check() {
       const s = slider.get()[0] * SMAX, ok = s >= lo - 1e-9 && s <= hi + 1e-9; slider.lock(); draw(s, true);
       const inside = PRIOR_QS.filter(z => Math.abs(z * s) <= m).length;
-      const why = ok ? '' : s < lo ? ' Too tight: it says the slope is almost surely near zero.' : ' Too loose: many lines leave the frame, which says impossible plants are likely.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}${inside} of 25 lines stay in the frame. A prior spread of about ${fmtNum(lo, 2)} to ${fmtNum(hi, 2)} ${v.per} keeps nearly all of them in.` };
+      const why = ok ? '' : s < lo ? ' Too tight: nearly flat lines only.' : ' Too loose: many lines leave the frame.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}${inside} of 25 lines stay in. A spread of ${fmtNum(lo, 2)} to ${fmtNum(hi, 2)} ${v.per} keeps nearly all in.` };
     },
     solve() { slider.set(0, (lo + hi) / 2 / SMAX, true); },
     solveWrong() { slider.set(0, 0.75, true); },

@@ -11,7 +11,7 @@ const { chromium } = require('playwright'); const { execSync } = require('child_
     await p.evaluate(id => openActivity(UNITS.flatMap(u => u.subs).find(s => s.id === id)), id); await p.waitForSelector('#stage > *');
     if (mode === 'a') { await p.evaluate(() => __run.ctrl.solve()); if (__kind(id)) {} await p.evaluate(() => { const b = document.getElementById('quiz-action'); if (!b.disabled && __run.phase === 'answering') b.click(); }); }
     const f = `/tmp/sh_${id}_${mode}.png`; await p.screenshot({ path: f }); files.push(f);
-    const fit = await p.evaluate(() => { const b = document.getElementById('quiz-body'); return b.scrollHeight - b.clientHeight; });
+    const fit = await p.evaluate(() => { const b = document.getElementById('quiz-body'), s = document.getElementById('stage'); let low = 0; for (const e of s.querySelectorAll('*')) { const r = e.getBoundingClientRect(); if (r.height > 0) low = Math.max(low, r.bottom); } return Math.max(b.scrollHeight - b.clientHeight, s.scrollHeight - s.clientHeight, Math.round(low - document.getElementById('quiz-action').getBoundingClientRect().top + 4)); });
     if (fit > 1 || errs.length) console.log(id, mode, 'OVERFLOW', fit, errs.join('|'));
     await p.context().close();
   }

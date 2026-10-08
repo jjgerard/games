@@ -151,7 +151,7 @@ function buildBound(ctx) {
       const ok = Math.abs(h.v - S.xc) <= tol; h.lock();
       ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(S.xc), cy: ch.Y(rising ? 1 : 0) }), ch.over);
       const g = U.glm(S.xs, S.ks, S.xs.map(() => S.n)); ch.add(sv('polyline', { class: 'curveln', points: Array.from({ length: 61 }, (_, i) => { const x = i * 0.2; return `${ch.X(x)},${ch.Y(U.plogis(g.b0 + g.b1 * x))}`; }).join(' ') }));
-      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `The straight line leaves the allowed band at x = ${f1(S.xc)} (green ring). The dashed S-curve of a logistic model bends and never leaves 0% to 100%.` };
+      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `The line leaves the band at x = ${f1(S.xc)} (green ring). The dashed logistic S-curve bends and never leaves 0% to 100%.` };
     },
     solve() { h.set(S.xc, true); }, solveWrong() { h.set(S.xc > 9 ? S.xc - 3 : 12, true); }, info: { xc: S.xc, tol, start: 3 },
   };
@@ -459,7 +459,7 @@ function buildCodeCoef(ctx) {
 function buildCodeWhich(ctx) {
   const rng = ctx.rng, key = U.pick(rng, CODE_KEYS), cod = MM.CODINGS[key], [mA, mB] = codingMeans(rng), K = U.coefs(cod, mA, mB);
   ctx.setPrompt('These are the real group means. The model table is below. <b>Which coding</b> was used?');
-  const ch = Plot(ctx, { h: 138, left: 44, right: 14, top: 8, bottom: 30, xr: [0, 3], yr: [0, 100], label: `Group means: A ${f0(mA)}, B ${f0(mB)}` });
+  const ch = Plot(ctx, { h: 124, left: 44, right: 14, top: 8, bottom: 30, xr: [0, 3], yr: [0, 100], label: `Group means: A ${f0(mA)}, B ${f0(mB)}` });
   ch.axisY([[0, '0'], [50, '50'], [100, '100']]); ch.pline(ch.left, ch.H - ch.bottom, ch.W - ch.right, ch.H - ch.bottom, 'axis');
   ch.text(ch.X(1), ch.H - 6, 'A', 'tx tb ga', 'middle'); ch.text(ch.X(2), ch.H - 6, 'B', 'tx tb gb', 'middle');
   const a = ch.add(marker('circle', 9, 'ga'), ch.over), b = ch.add(marker('sq', 9, 'gb'), ch.over);

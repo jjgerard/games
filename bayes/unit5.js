@@ -103,7 +103,7 @@ function buildNameCoding(ctx) {
     S.line(ax, y0, ax, y1 + dir * 6, 'pline good'), `<path d="M${ax - 8} ${y1 + dir * 12} L${ax} ${y1} L${ax + 8} ${y1 + dir * 12} Z" class="pfill good"/>`]);
   const opts = CODINGS.filter(k => k.id !== 'num');
   let chosen = null; const pick = PickButtons(opts.map(o => ({ text: o.name })), i => { chosen = i; ctx.setReady(true); }, 'two');
-  ctx.stage.append(pl.el, pick.el);
+  ctx.stage.append(pl.el, el('div', { class: 'stage-note' }, 'Dashed: intercept. Arrow: slope.'), pick.el);
   const answer = opts.findIndex(o => o.id === c.cd.id);
   return {
     check() {

@@ -314,6 +314,85 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
+  // ---------------- Units 2-6: each opens when the one before is finished; every sub-level is played through ----------------
+  for (const U of [2, 3, 4, 5, 6]) {
+    const before = await (async () => { const c = await browser.newContext({ viewport: { width: 360, height: 640 } }); const p = await c.newPage(); await p.goto(URL + '?seed=2'); await p.evaluate(() => localStorage.clear()); await p.reload(); return { c, p }; })();
+    await before.p.evaluate(U => { const done = UNITS.slice(0, U - 1).flatMap(u => u.subs.map(s => s.id)); localStorage.setItem('bayes:v1', JSON.stringify({ points: 0, started: true, done })); }, U);
+    await before.p.reload(); await before.p.click('#btn-continue');
+    ok(`Unit ${U} is locked until Unit ${U - 1} is finished`, await before.p.$$eval('#unit-grid .tile', (t, U) => t[U].disabled, U));
+    await before.c.close();
+    for (const [w, h] of SIZES) {
+      const tag = `U${U} ${w}x${h}`;
+      const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+      const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+      await page.goto(URL + '?seed=17'); await page.evaluate(U => localStorage.setItem('bayes:v1', JSON.stringify({ points: 500, started: true, done: UNITS.slice(0, U).flatMap(u => u.subs.map(s => s.id)) })), U); await page.reload();
+      await page.click('#btn-continue');
+      ok(`${tag} unit opens once the previous one is done`, await page.$$eval('#unit-grid .tile', (t, U) => !t[U].disabled, U));
+      await page.click(`#unit-grid .tile:nth-child(${U + 1})`);
+      const subs = await page.$$eval('#sub-grid .tile', t => t.length), expected = await page.evaluate(U => UNITS[U].subs.length, U);
+      ok(`${tag} shows ${expected} sub-levels, only the first open`, subs === expected && (await page.$$eval('#sub-grid .tile:not(.locked)', t => t.length)) === 1, String(subs));
+      for (let i = 0; i < subs; i++) {
+        await page.click(`#sub-grid .tile:nth-child(${i + 1})`);
+        const sub = await page.evaluate(() => ({ id: __run.sub.id, kind: __run.sub.kind }));
+        await page.waitForSelector('#stage > *'); await checkFit(page, `${tag} ${sub.id} start`);
+        if (sub.kind === 'tutorial') {
+          ok(`${tag} ${sub.id} check starts disabled (waiting for the one move)`, await page.isDisabled('#quiz-action'));
+          await page.evaluate(() => __run.ctrl.solve()); await page.waitForFunction(() => __run.finished);
+          await checkFit(page, `${tag} ${sub.id} done`); await page.evaluate(() => document.getElementById('quiz-action').click());
+        } else {
+          await page.evaluate(() => __run.ctrl.solveWrong());
+          ok(`${tag} ${sub.id} check enabled when answered wrongly`, await page.isEnabled('#quiz-action'));
+          await page.evaluate(() => document.getElementById('quiz-action').click());
+          const wrong = await page.evaluate(() => ({ cls: document.getElementById('quiz-feedback').className, hearts: __run.game.missesLeft }));
+          ok(`${tag} ${sub.id} wrong answer marked wrong, heart used`, wrong.cls.includes('bad') && wrong.hearts === 1, JSON.stringify(wrong));
+          await checkFit(page, `${tag} ${sub.id} after wrong answer`);
+          await page.evaluate(() => document.getElementById('quiz-action').click());
+          for (let k = 0; k < 5; k++) {
+            await page.evaluate(() => __run.ctrl.solve()); await checkFit(page, `${tag} ${sub.id} q${k + 1} ready`);
+            ok(`${tag} ${sub.id} q${k + 1} check enabled`, await page.isEnabled('#quiz-action'));
+            await page.evaluate(() => document.getElementById('quiz-action').click());
+            const good = await page.evaluate(() => document.getElementById('quiz-feedback').className);
+            ok(`${tag} ${sub.id} q${k + 1} right answer accepted`, good.includes('good'), await page.textContent('#quiz-feedback'));
+            await checkFit(page, `${tag} ${sub.id} q${k + 1} revealed`);
+            if (k < 4) await page.evaluate(() => document.getElementById('quiz-action').click());
+          }
+          await page.evaluate(() => document.getElementById('quiz-action').click());
+        }
+        await page.waitForSelector('#quiz-overlay.hidden', { state: 'attached' });
+        ok(`${tag} ${sub.id} marked done`, (await page.$$eval('#sub-grid .tile.done', t => t.length)) === i + 1);
+      }
+      ok(`${tag} no page errors`, errors.length === 0, errors.join(' | '));
+      await ctx.close();
+    }
+  }
+
+  // Real pointer and keyboard use of the new controls (plot handles, tapping table cells, picture buttons).
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(URL + '?seed=5'); await page.evaluate(() => localStorage.clear()); await page.reload();
+    const open = id => page.evaluate(id => { closeActivity(); openActivity(UNITS.flatMap(u => u.subs).find(s => s.id === id)); }, id);
+    await open('u3-fit'); await page.waitForSelector('.hdl');
+    const hs = await page.$$('.hdl'); ok('fit by eye: two handles, each at least 44px', hs.length === 2 && (await Promise.all(hs.map(h => h.boundingBox()))).every(b => b.width >= 44 && b.height >= 44));
+    const plot = await (await page.$('.plotwrap')).boundingBox(), v0 = await page.$eval('.hdl', e => Number(e.getAttribute('aria-valuenow')));
+    // press on the plot near the left handle's column, high up: the left handle (nearer in x) follows
+    const lh = await hs[0].boundingBox(); await page.mouse.move(lh.x + 22, lh.y + 22); await page.mouse.down(); await page.mouse.move(lh.x + 22, plot.y + plot.height * 0.3, { steps: 6 }); await page.mouse.up();
+    const v1 = await page.$eval('.hdl', e => Number(e.getAttribute('aria-valuenow'))), v2 = await page.$$eval('.hdl', e => Number(e[1].getAttribute('aria-valuenow')));
+    ok('dragging a handle up raises its value and leaves the other alone', v1 > v0 + 5 && Math.abs(v2 - v0) < 0.01, `${v0} -> ${v1}, other ${v2}`);
+    await page.focus('.hdl'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown');
+    ok('arrow keys move a handle by its step', Math.abs((await page.$eval('.hdl', e => Number(e.getAttribute('aria-valuenow')))) - (v1 - 1)) < 0.01);
+    ok('handle says its value to screen readers', /cm/.test(await page.$eval('.hdl', e => e.getAttribute('aria-valuetext'))));
+    await open('u3-table'); await page.waitForSelector('.ptc');
+    const cells = await page.$$('.ptc'); ok('table: nine tappable cells, each at least 44px', cells.length === 9 && (await Promise.all(cells.map(c => c.boundingBox()))).every(b => b.width >= 44 && b.height >= 44));
+    await cells[4].click(); ok('tapping a cell selects it and enables Check', (await page.$$eval('.ptc.on', e => e.length)) === 1 && await page.isEnabled('#quiz-action'));
+    await open('u6-trace'); await page.waitForSelector('.rowpick'); const rp = await page.$$('.rowpick');
+    await rp[1].click(); ok('picture buttons: tapping selects exactly one', (await page.$$eval('.rowpick.on', e => e.length)) === 1);
+    await open('u4-land'); await page.waitForSelector('.as-thumb');
+    ok('pooling dot moves with the slider (aria value follows)', await page.evaluate(() => { __run.ctrl.solve(); return Number(document.querySelector('.as-thumb').getAttribute('aria-valuenow')) > 0; }));
+    ok('new controls: no page errors', errors.length === 0, errors.join('|'));
+    await ctx.close();
+  }
+
   // Keyboard and dialogs: focus moves in, Tab stays inside, Escape closes and puts focus back; levels playable by keyboard alone.
   {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
@@ -363,25 +442,31 @@ async function checkFit(page, label) {
     await ctx.close();
   }
 
-  // Placement: all right, then a miss on the third.
-  for (const plan of ['allright', 'missthird']) {
+  // Placement (10 items): all right; a miss on the third (start in Unit 0); a miss on the seventh (start in Unit 2).
+  for (const plan of ['allright', 'missthird', 'missseventh']) {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
     const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(URL + '?seed=7'); await page.evaluate(() => localStorage.clear()); await page.reload();
     await page.click('#btn-placement');
-    for (let i = 0; i < 5; i++) {
+    const N = await page.evaluate(() => PLACEMENT.length);
+    ok(`placement has about 10 items`, N >= 9 && N <= 11, String(N));
+    const missAt = plan === 'missthird' ? 2 : plan === 'missseventh' ? 6 : -1;
+    for (let i = 0; i < N; i++) {
       await page.waitForSelector('#stage > *');
-      await page.evaluate((wrong) => wrong ? __run.ctrl.solveWrong() : __run.ctrl.solve(), plan === 'missthird' && i === 2);
+      await page.evaluate((wrong) => wrong ? __run.ctrl.solveWrong() : __run.ctrl.solve(), i === missAt);
       await checkFit(page, `placement ${plan} item ${i + 1}`);
       await page.evaluate(() => document.getElementById('quiz-action').click()); await checkFit(page, `placement ${plan} item ${i + 1} after`);
       await page.evaluate(() => document.getElementById('quiz-action').click());
     }
     const txt = await page.textContent('#stage');
-    ok(`placement ${plan} result shown`, plan === 'allright' ? /every picture right/.test(txt) : /Which bag\?/.test(txt), txt);
+    ok(`placement ${plan} result shown`, plan === 'allright' ? /every picture right/.test(txt) : plan === 'missthird' ? /Which bag\?/.test(txt) : /Two steps/.test(txt), txt);
     await page.evaluate(() => document.getElementById('quiz-action').click());
     await page.waitForSelector('#screen-unit:not(.hidden)');
-    const doneCount = await page.$$eval('#sub-grid .tile.done', t => t.length);
-    ok(`placement ${plan} marks skipped sub-levels done`, plan === 'allright' ? doneCount === 9 : doneCount === 5, String(doneCount));
+    const total = await page.evaluate(() => JSON.parse(localStorage.getItem('bayes:v1')).done.length);
+    const expectTotal = await page.evaluate(plan => { const subs = UNITS.flatMap(u => u.subs); if (plan === 'allright') return subs.filter(s => !s.id.startsWith('u6')).length; if (plan === 'missthird') return 5; const upto = subs.findIndex(s => s.id === 'u2-steps-tut'); return upto; }, plan);
+    ok(`placement ${plan} marks skipped sub-levels done (${total})`, total === expectTotal, `${total} vs ${expectTotal}`);
+    const heading = await page.textContent('#unit-heading');
+    ok(`placement ${plan} opens the right unit`, plan === 'allright' ? /Unit 6/.test(heading) : plan === 'missthird' ? /Unit 0/.test(heading) : /Unit 2/.test(heading), heading);
     ok(`placement ${plan} awards no points`, (await page.evaluate(() => JSON.parse(localStorage.getItem('bayes:v1')).points)) === 0);
     ok(`placement ${plan} no page errors`, errors.length === 0, errors.join('|'));
     await ctx.close();

@@ -26,7 +26,7 @@ const f1 = x => M.fmt(x, 1), f2 = x => M.fmt(x, 2), f0 = x => M.fmt(x, 0);
 const stagePad = stage => { const cs = getComputedStyle(stage); return stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); };
 
 // Height for a picture: what is left of the stage, keeping 70px back for the answer's explanation to grow into.
-const roomH = (ctx, other = 0, min = 170, max = 320) => Math.round(M.clamp(ctx.stage.clientHeight - 70 - other, min, max));
+const roomH = (ctx, other = 0, min = 170, max = 320) => Math.round(M.clamp(ctx.stage.clientHeight - 82 - other, min, max));
 
 // A marker shape as an SVG node, centred on (0,0). Shapes differ by form, not only colour.
 function marker(shape, r = 8, cls = '') {
@@ -208,9 +208,11 @@ function LogitBars(ctx, { vals, names = ['A', 'B', 'C', 'D'], drag = [], pulse =
 // ---------------------------------------------------------------------------
 // A drawn model table. Cells (or whole rows) are buttons when it is a tapping question.
 // ---------------------------------------------------------------------------
-function ModelTable({ cols, rows, mode = 'cell', onTap = () => {}, caption = 'Model table', flash = null, only = null, compact = false, hot = null }) {
+function ModelTable({ cols, rows, mode = 'cell', onTap = () => {}, caption = 'Model table', flash = null, only = null, can = null, compact = false, hot = null, widths = null }) {
   const t = el('table', { class: 'mt' + (compact ? ' compact' : ''), role: 'grid', 'aria-label': caption });
   const head = el('tr', {}, el('th', { scope: 'col' }, ''), ...cols.map(c => el('th', { scope: 'col', 'aria-label': c.aria || c.label }, c.label)));
+  if (widths) t.classList.add('cg');
+  if (widths) t.append(el('colgroup', {}, ...widths.map(w => el('col', { style: `width:${w}%` }))));
   t.append(el('thead', {}, head));
   const tb = el('tbody'); t.append(tb);
   const api = { el: t, cells: {}, sel: null, locked: false };
@@ -220,7 +222,7 @@ function ModelTable({ cols, rows, mode = 'cell', onTap = () => {}, caption = 'Mo
     cols.forEach((c, ci) => {
       const text = r.cells[ci];
       const td = el('td', {});
-      if (mode === 'none' || text == null || r.dead || (only && !(only[0] === ri && only[1] === ci))) td.textContent = text == null ? '' : text;
+      if (mode === 'none' || text == null || r.dead || (only && !(only[0] === ri && only[1] === ci)) || (can && !can(ri, ci))) td.textContent = text == null ? '' : text;
       else {
         const b = el('button', { class: 'mtcell', 'aria-label': `${r.aria || r.name}, ${c.aria || c.label}: ${text}` + (r.sub ? '' : ''), onclick: () => { if (api.locked) return; api.pick(ri, ci); } }, text);
         if (flash && flash[0] === ri && flash[1] === ci) b.classList.add('flash');
@@ -284,11 +286,11 @@ function ChipSet(items, { onChange = () => {}, cols = 2, states = ['', 'on'], la
 }
 
 // A grid of cells, rows x columns. `dots(r,c)` is how many observations sit in the cell. Tap to toggle when `tap`.
-function DesignGrid({ rows, cols, dots = () => 0, tap = false, onTap = () => {}, colGroups = null, caption = 'Design table', cell = 44, flashCell = null, rowW = 0 }) {
+function DesignGrid({ rows, cols, dots = () => 0, label = null, tap = false, onTap = () => {}, colGroups = null, caption = 'Design table', cell = 44, cellH = 44, flashCell = null, rowW = 0 }) {
   const root = el('div', { class: 'dgrid', role: 'group', 'aria-label': caption });
   const api = { el: root, btns: {}, locked: false, state: {} };
   const tpl = `${rowW || 52}px repeat(${cols.length}, ${cell}px)`;
-  root.style.gridTemplateColumns = tpl;
+  root.style.gridTemplateColumns = tpl; root.style.setProperty('--cellh', cellH + 'px');
   if (colGroups) { root.append(el('div', { class: 'dg-corner' })); for (const g of colGroups) root.append(el('div', { class: 'dg-grp', style: `grid-column: span ${g.span}` }, g.label)); }
   root.append(el('div', { class: 'dg-corner' })); for (const c of cols) root.append(el('div', { class: 'dg-col' }, c));
   rows.forEach((rl, r) => {
@@ -296,8 +298,8 @@ function DesignGrid({ rows, cols, dots = () => 0, tap = false, onTap = () => {},
     cols.forEach((cl, c) => {
       const n = dots(r, c), k = r + ':' + c; api.state[k] = !!(tap ? false : n);
       const b = el(tap ? 'button' : 'div', { class: 'dg-cell' + (tap ? ' tap' : '') + (flashCell && flashCell[0] === r && flashCell[1] === c ? ' flash' : ''), 'aria-label': `${rl}, ${cl}: ${n ? n + ' observation' + (n > 1 ? 's' : '') : 'empty'}`, ...(tap ? { 'aria-pressed': 'false' } : {}) });
-      b.append(...Array.from({ length: Math.min(n, 4) }, () => el('i', { class: 'dgdot', 'aria-hidden': 'true' })));
-      if (n > 4) b.append(el('span', { class: 'dgn' }, String(n)));
+      if (label) b.append(el('span', { class: 'dgn' }, label(r, c)));
+      else { b.append(...Array.from({ length: Math.min(n, 4) }, () => el('i', { class: 'dgdot', 'aria-hidden': 'true' }))); if (n > 4) b.append(el('span', { class: 'dgn' }, String(n))); }
       if (tap) b.addEventListener('click', () => { if (api.locked) return; api.toggle(r, c, true); });
       root.append(b); api.btns[k] = b;
     });
@@ -305,7 +307,7 @@ function DesignGrid({ rows, cols, dots = () => 0, tap = false, onTap = () => {},
   api.toggle = (r, c, user) => {
     const k = r + ':' + c; api.state[k] = !api.state[k]; const b = api.btns[k];
     b.classList.toggle('filled', api.state[k]); b.setAttribute('aria-pressed', String(api.state[k])); b.classList.remove('flash');
-    b.replaceChildren(...(api.state[k] ? [el('i', { class: 'dgdot', 'aria-hidden': 'true' }), el('i', { class: 'dgdot', 'aria-hidden': 'true' })] : []));
+    if (!label) b.replaceChildren(...(api.state[k] ? [el('i', { class: 'dgdot', 'aria-hidden': 'true' }), el('i', { class: 'dgdot', 'aria-hidden': 'true' })] : []));
     onTap(r, c, api.state[k], user);
   };
   api.filled = () => Object.keys(api.state).filter(k => api.state[k]);
@@ -320,17 +322,40 @@ function TileBuilder({ pool, prefix = '', suffix = '', onChange = () => {}, flas
   const bin = el('div', { class: 'tpool', role: 'group', 'aria-label': 'Tiles to choose from' });
   const root = el('div', { class: 'tbuilder' }, line, bin);
   const api = { el: root, chosen: [], btns: {}, locked: false };
-  const draw = () => {
-    line.replaceChildren(el('span', { class: 'tfix' }, prefix), ...api.chosen.flatMap((k, i) => [el('button', { class: 'tile2 inline', 'aria-label': `${pool.find(p => p.key === k).text}, remove`, onclick: () => { if (!api.locked) api.remove(k, true); } }, pool.find(p => p.key === k).text), i < api.chosen.length - 1 ? el('span', { class: 'tfix' }, '+') : null]), el('span', { class: 'tfix' }, suffix));
+  const draw = (notify = true) => {
+    line.replaceChildren(el('span', { class: 'tfix' }, prefix), ...[...api.chosen.flatMap((k, i) => [el('button', { class: 'tile2 inline', 'aria-label': `${pool.find(p => p.key === k).text}, remove`, onclick: () => { if (!api.locked) api.remove(k, true); } }, pool.find(p => p.key === k).text), i < api.chosen.length - 1 ? el('span', { class: 'tfix' }, '+') : null])].filter(Boolean), el('span', { class: 'tfix' }, suffix));
     for (const p of pool) api.btns[p.key].classList.toggle('used', api.chosen.includes(p.key));
     for (const p of pool) api.btns[p.key].disabled = api.locked || api.chosen.includes(p.key);
-    onChange(api.chosen.slice());
+    if (notify) onChange(api.chosen.slice());
   };
   for (const p of pool) { const b = el('button', { class: 'tile2' + (flashKey === p.key ? ' flash' : ''), onclick: () => api.add(p.key, true) }, p.text); bin.append(b); api.btns[p.key] = b; }
   api.add = (k, user) => { if (api.locked || api.chosen.includes(k)) return; api.chosen.push(k); api.btns[k].classList.remove('flash'); draw(); };
   api.remove = (k, user) => { api.chosen = api.chosen.filter(x => x !== k); draw(); };
-  api.lock = () => { api.locked = true; draw(); };
+  api.lock = () => { api.locked = true; draw(false); };
   api.set = keys => { api.chosen = keys.slice(); draw(); };
   draw();
+  return api;
+}
+
+// A slider you drag (native range input, so it works with keys and screen readers).
+function RangeSlider({ min = 0, max = 1, step = 0.01, value = 0, label = 'Slider', left = '', right = '', onChange = () => {}, flash = false, valueText = null }) {
+  const inp = el('input', { type: 'range', class: 'nslider' + (flash ? ' flashrange' : ''), min, max, step, value, 'aria-label': label });
+  const api = { el: el('div', { class: 'rangewrap' }, el('div', { class: 'rangelab' }, el('span', {}, left), el('span', {}, right)), inp), inp, touched: false };
+  const upd = u => { if (u) { api.touched = true; inp.classList.remove('flashrange'); } if (valueText) inp.setAttribute('aria-valuetext', valueText(+inp.value)); onChange(+inp.value, u); };
+  inp.addEventListener('input', () => upd(true));
+  api.set = v => { inp.value = v; upd(false); };
+  api.get = () => +inp.value; api.lock = () => { inp.disabled = true; };
+  return api;
+}
+
+// Rows of dots, one row per person: each row's dots are one person's observations.
+function PersonRows(people, { onPick = null, flashIdx = -1, caption = 'Observations by person' } = {}) {
+  const root = el('div', { class: 'prows', role: 'group', 'aria-label': caption });
+  const api = { el: root, rows: [] };
+  people.forEach((p, i) => {
+    const row = el(onPick ? 'button' : 'div', { class: 'prow' + (flashIdx === i ? ' flash' : ''), 'aria-label': `${p.label}: ${p.n} observations${p.group ? ', group ' + p.group : ''}`, ...(onPick ? { onclick: () => { api.rows.forEach((r, j) => r.classList.toggle('on', j === i)); onPick(i); } } : {}) },
+      el('span', { class: 'plabel' }, p.label), el('span', { class: 'pdots', 'aria-hidden': 'true' }, ...Array.from({ length: p.n }, () => el('i', { class: 'pd ' + (p.group === 'B' ? 'pdb' : p.group === 'A' ? 'pda' : '') }))));
+    root.append(row); api.rows.push(row);
+  });
   return api;
 }

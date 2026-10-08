@@ -460,3 +460,4 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 
 .pfill { fill: var(--accent); } .pfill.good { fill: var(--good); }
 .pickrow.two .pickbtn { flex: 1 1 calc(50% - 8px); }
+.rowpick:disabled .rowname { color: var(--ink); }

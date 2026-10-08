@@ -58,8 +58,9 @@ function buildLand(ctx) {
 // ---------------------------------------------------------------------------
 const MOST_S = 4, MOST_T = 3;
 function mostCase(rng) {
+  const kind = BM.pick(rng, ['A', 'B', 'C']);   // chosen once, so the three kinds stay equally common
   for (let t = 0; t < 4000; t++) {
-    const kind = BM.pick(rng, ['A', 'B', 'C']), ns = BM.shuffle(rng, [2, 3, 4, 6, 9, 16]).slice(0, 3);
+    const ns = BM.shuffle(rng, [2, 3, 4, 6, 9, 16]).slice(0, 3);
     const rows = ns.map(n => { const d = BM.int(rng, 3, 10), sgn = rng() < 0.5 ? -1 : 1, m = MU4 + sgn * d; return { n, d, m, p: pooledAt(m, n, MOST_S, MOST_T), move: d * (1 - BM.shrinkW(MOST_T, MOST_S, n)) }; });
     const moves = rows.map(r => r.move), win = argmax(moves), sorted = moves.slice().sort((a, b) => b - a);
     if (sorted[0] < 1.25 * sorted[1] || sorted[0] < 2.5) continue;

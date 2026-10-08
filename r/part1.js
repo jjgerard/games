@@ -144,7 +144,7 @@ const U3 = {
     tutorial('u3-first', 'Inputs in brackets', 'Drop the inputs in', 'name(inputs). The inputs are called arguments.', ctx =>
       E.assemble(ctx, { prompt: 'A function is a name with brackets. Drag the inputs inside.', parts: ['sum(', { slot: 'a' }, ')'], tiles: ['1, 2, 3'], answer: { a: '1, 2, 3' }, tutorial: true, done: '`sum(1, 2, 3)` hands 1, 2 and 3 to the function sum, which adds them up and prints [1] 6.' })),
     streak('u3-call', 'Fill the call', 'Name and brackets', 'A call is name, round bracket, inputs, round bracket. Pick the function that does the job.', ctx => {
-      const r = ctx.rng, f = RG.pick(r, Object.keys(FN)), xs = ints(r, 1, 20, 3), args = xs.join(', ');
+      const r = ctx.rng, f = RG.pick(r, Object.keys(FN)), xs = ints(r, 1, 20, 3), args = f === 'length' ? `c(${xs.join(', ')})` : xs.join(', ');
       return E.assemble(ctx, { prompt: `Get <b>${FN[f][0]}</b> of ${xs.join(', ')}.`, parts: [{ slot: 'f' }, { slot: 'o' }, args, { slot: 'c' }], tiles: [...Object.keys(FN), '(', ')', '[', ']'], answer: { f, o: '(', c: ')' },
         why: { f: { '*': `\`${f}\` is the function for ${FN[f][0]}.` }, o: { '[': 'Square brackets pick from a vector. A function call needs round brackets.', ']': 'A call opens with a round bracket.', ')': 'A call opens with ( and closes with ).', '*': 'A call opens with a round bracket (.' }, c: { ']': 'A call closes with a round bracket ).', '[': 'A call closes with a round bracket ).', '(': 'A call closes with ), not (.', '*': 'A call closes with a round bracket ).' } },
         explain: `\`${f}(${args})\` is ${FN[f][1](xs)}.`, rcheck: [R1(`${f}(${args})`, [FN[f][1](xs)])] });
@@ -454,13 +454,12 @@ const U8 = {
       return E.pick(ctx, { prompt: 'Run the script twice. Tap every line whose numbers <b>change</b> between runs.', mode: 'line', items, answer: ans, allowNone: seeded, noneLabel: 'None of them change',
         explain: seeded ? 'set.seed(42) fixes the random stream, so a re-run starts from the same place and gives the same numbers.' : 'The random generators give new numbers each run. Fixed values never change.', rcheck: [{ kind: 'random', lines: items, expect: items.map((l, i) => ans.includes(i)) }] });
     }, { target: 10 }),
-    streak('u8-seed', 'Where does set.seed go?', 'Tap the line it goes above', 'set.seed(n) restarts the random stream. Put it above the first random line, and a whole re-run gives identical numbers.', ctx => {
-      const r = ctx.rng, pre = RG.int(r, 0, 2), lines = []; for (let i = 0; i < pre; i++) lines.push(['n = 3', 'k = 2'][i]);
-      lines.push('a = runif(n)', 'b = runif(n)');
-      if (pre === 0) lines[0] = 'a = runif(3)', lines[1] = 'b = runif(3)';
-      const items = [...lines, '(end of script)'];
-      return E.pick(ctx, { prompt: 'Run the script twice and get the <b>same numbers</b> both times. Tap the line <code>set.seed(1)</code> goes <b>above</b>.', mode: 'line', single: true, items, answer: [pre],
-        explain: 'It goes above the first random line. Above the second would let the first line differ between runs, and at the end it would come too late.', rcheck: [{ kind: 'seedplace', pre, expect: pre }] });
+    streak('u8-seed', 'What does set.seed fix?', 'Which results repeat?', 'set.seed(n) restarts the random stream at a fixed place. Every random line after it repeats in a re-run; lines before the first set.seed do not.', ctx => {
+      const r = ctx.rng, g = RG.int(r, 0, 3), rand = ['a = runif(2)', 'b = runif(2)', 'c = runif(2)'], lines = [...rand]; lines.splice(g, 0, 'set.seed(1)');
+      const ans = [0, 1, 2].filter(i => i >= g);
+      return E.pick(ctx, { prompt: 'Run the whole script <b>twice</b>. Tap every variable that gets the same numbers both times.', lead: lines, mode: 'token', items: ['a', 'b', 'c'], answer: ans, allowNone: true, noneLabel: 'None of them repeat',
+        explain: g === 3 ? 'set.seed(1) comes after every random line, so it cannot fix any of them.' : g === 0 ? 'set.seed(1) is above all three, so all repeat.' : `Only the lines after set.seed(1) repeat: ${ans.map(i => 'abc'[i]).join(', ')}. The ones before it are drawn from wherever the stream happens to be.`,
+        rcheck: [{ kind: 'seedvars', lines, vars: ['a', 'b', 'c'], expect: [0, 1, 2].map(i => i >= g) }] });
     }, { target: 10 }),
   ],
 };

@@ -232,7 +232,7 @@ E.assemble = (ctx, c) => {
     },
     setSlots(map) { reset(); Object.entries(map).forEach(([k, t]) => { const tile = tiles.find(x => x.slot == null && x.t === t); if (tile) put(tile, k); }); },
     info: { answer: c.answer, tiles: texts, order }, rcheck: c.rcheck || null,
-    naive: c.naive ? Object.fromEntries(Object.entries(c.naive).map(([n, f]) => [n, () => { reset(); f({ put: (k, t) => { const tile = tiles.find(x => x.slot == null && x.t === t); if (tile) put(tile, k); } }); }])) : {},
+    naive: Object.assign({ random: () => { reset(); order.forEach(k => { const free = tiles.filter(t => t.slot == null); put(RG.pick(Math.random, free), k); }); } }, c.naive ? Object.fromEntries(Object.entries(c.naive).map(([n, f]) => [n, () => { reset(); f({ put: (k, t) => { const tile = tiles.find(x => x.slot == null && x.t === t); if (tile) put(tile, k); } }); }])) : {}),
   };
 };
 
@@ -315,7 +315,7 @@ E.pick = (ctx, c) => {
       if (want.size === 0 && noneBtn) set([ids[0]]);
     },
     info: { answer: c.answer, ids }, rcheck: c.rcheck || null,
-    naive: { all: () => set(ids), first: () => set([ids[0]]), last: () => set([ids[ids.length - 1]]), none: () => set([]), ...(c.naive || {}) },
+    naive: { random: () => { const k = c.single ? 1 : RG.int(Math.random, c.allowNone ? 0 : 1, ids.length); set(RG.sample(Math.random, ids, k)); }, all: () => set(ids), first: () => set([ids[0]]), last: () => set([ids[ids.length - 1]]), none: () => set([]), ...(c.naive || {}) },
   };
 };
 
@@ -328,6 +328,7 @@ E.fill = (ctx, c) => {
   ctx.setPrompt(c.prompt);
   const wrap = el('div', { class: 'stagecol' });
   if (c.lead) wrap.append(codebox(c.lead));
+  if (c.pic) wrap.append(c.pic);
   const blankIds = Object.keys(c.blanks);
   const gd = c.grid.data.map((row, r) => row.map((v, k) => blankIds.includes(r + ',' + k) ? { v: '?', cls: 'blank' } : v));
   const g = Grid({ ...c.grid, data: gd, kind: 'btn', only: c.tutorial ? blankIds[0] : null });
@@ -388,7 +389,7 @@ E.fill = (ctx, c) => {
     },
     setVals(m) { setAll(m); },
     info: { blanks: c.blanks }, rcheck: c.rcheck || null,
-    naive: { 'all the first tile': () => setAll(Object.fromEntries(blankIds.map(id => [id, texts[0]]))), ...(c.naive || {}) },
+    naive: { random: () => setAll(Object.fromEntries(blankIds.map(id => [id, RG.pick(Math.random, palette).t]))), 'all the first tile': () => setAll(Object.fromEntries(blankIds.map(id => [id, texts[0]]))), ...(c.naive || {}) },
   };
 };
 
@@ -421,7 +422,7 @@ E.choice = (ctx, c) => {
     solve() { if (c.tutorial) btns[0].click(); else setPick(opts.indexOf(correct)); },
     solveWrong() { setPick(opts.findIndex(o => o !== correct)); },
     info: { options: opts, correct }, rcheck: c.rcheck || null,
-    naive: { first: () => setPick(0), last: () => setPick(opts.length - 1), longest: () => setPick(opts.reduce((m, o, i) => o.length > opts[m].length ? i : m, 0)), shortest: () => setPick(opts.reduce((m, o, i) => o.length < opts[m].length ? i : m, 0)) },
+    naive: { random: () => setPick(RG.int(Math.random, 0, opts.length - 1)), first: () => setPick(0), last: () => setPick(opts.length - 1), longest: () => setPick(opts.reduce((m, o, i) => o.length > opts[m].length ? i : m, 0)), shortest: () => setPick(opts.reduce((m, o, i) => o.length < opts[m].length ? i : m, 0)) },
   };
 };
 
@@ -432,7 +433,7 @@ E.choice = (ctx, c) => {
 E.count = (ctx, c) => {
   ctx.setPrompt(c.prompt);
   const wrap = el('div', { class: 'stagecol' });
-  if (c.lead) wrap.append(codebox(c.lead));
+  if (c.lead) wrap.append(codebox(c.lead, { cls: 'hideonreview' }));
   const picBox = el('div', { class: 'picbox' }); if (c.pic) picBox.append(c.pic); wrap.append(picBox);
   let n = 0, touched = false, locked = false, done = false;
   const minus = el('button', { class: 'stepbtn', 'aria-label': 'one fewer row' }, '−'), plus = el('button', { class: 'stepbtn', 'aria-label': 'one more row' }, '+');
@@ -453,11 +454,11 @@ E.count = (ctx, c) => {
   return {
     judge: () => n === c.answer,
     check() { locked = true; paint(); const ok = n === c.answer; bin.classList.toggle('ok', ok);
-      if (c.after) { picBox.innerHTML = ''; picBox.append(el('div', { class: 'note' }, 'What R gives back:'), c.after()); }
+      if (c.after) { picBox.innerHTML = ''; const a = c.after(); a.setAttribute('aria-label', 'What R gives back'); a.classList.add('afterbox'); picBox.append(a); }
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + (typeof c.explain === 'function' ? c.explain(ok, n) : c.explain || '') }; },
     solve() { if (c.tutorial) { while (n < c.answer) bump(1); } else setN(c.answer); }, solveWrong() { setN(c.answer === 1 ? 2 : c.answer - 1); },
     setN, info: { answer: c.answer, max: c.max }, rcheck: c.rcheck || null,
-    naive: { 'same as input': () => setN(c.inputRows), 'always 1': () => setN(1), 'half': () => setN(Math.round(c.inputRows / 2)), ...(c.naive || {}) },
+    naive: { random: () => setN(RG.int(Math.random, 0, c.max)), 'same as input': () => setN(c.inputRows), 'always 1': () => setN(1), 'half': () => setN(Math.round(c.inputRows / 2)), ...(c.naive || {}) },
   };
 };
 
@@ -493,7 +494,7 @@ E.sort = (ctx, c) => {
     solve() { chips.forEach(ch => { ch.box = c.groups.indexOf(ch.r.group); }); held = null; paint(); },
     solveWrong() { this.solve(); const ch = chips[0]; ch.box = (ch.box + 1) % c.groups.length; paint(); },
     info: { groups: c.groups }, rcheck: c.rcheck || null,
-    naive: { 'all in one box': () => { chips.forEach(ch => { ch.box = 0; }); paint(); } },
+    naive: { random: () => { chips.forEach(ch => { ch.box = RG.int(Math.random, 0, c.groups.length - 1); }); held = null; paint(); }, 'all in one box': () => { chips.forEach(ch => { ch.box = 0; }); paint(); } },
   };
 };
 
@@ -534,12 +535,14 @@ E.match = (ctx, c) => {
   paint();
   return {
     judge,
-    check() { locked = true; const ok = judge(); L.forEach(x => { const good = c.pairs.some(([l, r]) => l === x.i && r === x.link); x.node.classList.add(good ? 'right' : 'bad'); Rr[x.link != null ? x.link : 0].node.classList.add(good ? 'right' : 'bad'); x.node.disabled = true; }); Rr.forEach(x => { x.node.disabled = true; });
+    check() { locked = true; const ok = judge();
+      L.forEach(x => { const want = c.pairs.find(([l]) => l === x.i); const good = want ? x.link === want[1] : x.link == null; x.node.classList.add(good ? 'right' : 'bad'); if (x.link != null) Rr[x.link].node.classList.add(good ? 'right' : 'bad'); x.node.disabled = true; });
+      Rr.forEach(x => { x.node.disabled = true; });
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + (typeof c.explain === 'function' ? c.explain(ok) : c.explain || '') }; },
     solve() { if (c.tutorial) { tap('L', L[0]); tap('R', Rr[0]); } else setPairs(c.pairs); },
     solveWrong() { const ps = c.pairs.map(p => p.slice()); if (ps.length > 1) { const t = ps[0][1]; ps[0][1] = ps[1][1]; ps[1][1] = t; setPairs(ps); } else { const wrong = Rr.findIndex((_, i) => i !== ps[0][1]); setPairs([[ps[0][0], wrong >= 0 ? wrong : 0]]); } },
     info: { pairs: c.pairs }, rcheck: c.rcheck || null,
-    naive: { 'pair in order shown': () => setPairs(L.map((_, i) => [i, i])) },
+    naive: { random: () => { const rr = RG.shuffle(Math.random, Rr.map((_, i) => i)); setPairs(L.map((_, i) => [i, rr[i % rr.length]]).filter(() => !c.partial || Math.random() < .6).slice(0, Math.min(L.length, Rr.length))); }, 'pair in order shown': () => setPairs(L.map((_, i) => [i, i % Rr.length])) },
   };
 };
 

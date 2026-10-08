@@ -18,13 +18,18 @@ const SIZES = [[320, 568], [360, 640], [414, 800]];
       const reopen = () => page.evaluate(id => { closeActivity(); openActivity(UNITS.flatMap(u => u.subs).find(s => s.id === id)); }, id);
       await reopen();
       const fit = () => page.evaluate(() => { const b = document.getElementById('quiz-body'), s = document.getElementById('stage'), a = document.getElementById('quiz-action').getBoundingClientRect(), o = document.querySelector('#quiz-overlay .editor').getBoundingClientRect();
-        return b.scrollHeight - b.clientHeight > 1 || s.scrollHeight - s.clientHeight > 1 || document.documentElement.scrollWidth > innerWidth || a.bottom > o.bottom + 1 || [...s.querySelectorAll('*')].some(e => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1); }); });
+        if (b.scrollHeight - b.clientHeight > 1) return 'body scrolls by ' + (b.scrollHeight - b.clientHeight);
+        if (s.scrollHeight - s.clientHeight > 1) return 'stage scrolls by ' + (s.scrollHeight - s.clientHeight);
+        if (document.documentElement.scrollWidth > innerWidth) return 'page wider than screen';
+        if (a.bottom > o.bottom + 1) return 'check button off screen';
+        const wide = [...s.querySelectorAll('*')].find(e => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1); });
+        return wide ? 'overflows sideways: ' + wide.tagName + '.' + wide.className : ''; });
       const n = kind === 'tutorial' ? 1 : N;
       for (let i = 0; i < n; i++) {
         try {
           await page.waitForSelector('#stage > *', { timeout: 3000 });
           const wrong = kind !== 'tutorial' && i % 4 === 3;
-          if (await fit()) { misfit++; if (examples.length < 1) examples.push('before'); }
+          { const f = await fit(); if (f) { misfit++; if (examples.length < 1) examples.push('before: ' + f); } }
           await page.evaluate(wr => wr ? __run.ctrl.solveWrong() : __run.ctrl.solve(), wrong);
           if (kind === 'tutorial') { const fin = await page.evaluate(() => __run.finished); if (!fin) { errs.push('tutorial did not complete'); } break; }
           const ready = await page.evaluate(() => !document.getElementById('quiz-action').disabled);
@@ -34,7 +39,7 @@ const SIZES = [[320, 568], [360, 640], [414, 800]];
           const good = await page.$eval('#quiz-feedback', e => e.className.includes('good'));
           if (wrong ? good : !good) errs.push(wrong ? 'wrong accepted' : 'right refused: ' + document_msg(await page.$eval('#quiz-feedback', e => e.textContent)));
           wrong ? (good ? 0 : rej++) : (good ? acc++ : 0);
-          if (await fit()) { misfit++; if (examples.length < 2) examples.push('after'); }
+          { const f = await fit(); if (f) { misfit++; if (examples.length < 2) examples.push('after: ' + f); } }
           if (await page.evaluate(() => __run.finished)) await reopen(); else await page.evaluate(() => document.getElementById('quiz-action').click());
         } catch (e) { errs.push(String(e.message).slice(0, 120)); await reopen(); }
       }
