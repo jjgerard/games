@@ -277,3 +277,6 @@ a.link-btn { display: inline-flex; align-items: center; min-height: 44px; }
 button.gh.rowh, button.gc, button.gh { min-width: 44px; }
 button.tok { min-width: 44px; }
 @media (max-width: 340px) { button.gh.rowh, button.gc, button.gh, button.tok { min-width: 36px; } }
+
+/* Home screen: the hero already shows the name and logo */
+body:has(#screen-home:not(.hidden)) #app-header .brand { visibility: hidden; }
