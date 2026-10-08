@@ -24,7 +24,7 @@ function lineSetup(rng, { xmax = 8 } = {}) {
     if (hi - lo <= 22) return { b0, b1, lo, hi, step: hi - lo > 14 ? 4 : 2 };
   }
 }
-const lineChart = (ctx, S, xmax = 8, h = roomH(ctx, 56, 190, 330)) => {
+const lineChart = (ctx, S, xmax = 8, h = roomH(ctx, 0, 190, 330)) => {
   const ch = Plot(ctx, { h, left: 36, right: 14, top: 12, bottom: 32, xr: [0, xmax], yr: [S.lo, S.hi], label: `A straight line starting at ${S.b0} on the y axis, changing ${S.b1} per step of x` });
   ch.axisY(gridTicks(S.lo, S.hi, S.step)); ch.axisX(gridTicks(0, xmax, 2));
   ch.line(0, S.b0, xmax, S.b0 + S.b1 * xmax, 'fitln');
@@ -43,7 +43,7 @@ function buildLineTut(ctx) {
 }
 
 function buildLineRead(ctx) {
-  const rng = ctx.rng, S = lineSetup(rng), kind = U.pick(rng, ['y', 'y', 'int', 'x']), xmax = 8;
+  const rng = ctx.rng, S = lineSetup(rng), kind = U.pick(rng, ['y', 'y', 'x']), xmax = 8;
   const ch = lineChart(ctx, S);
   const yAt = x => S.b0 + S.b1 * x, tol = Math.max(0.5, 0.045 * (S.hi - S.lo));
   let h, target, ghost, prompt;
@@ -57,20 +57,19 @@ function buildLineRead(ctx) {
     ghost = () => ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(xt), cy: ch.Y(Y) }), ch.over);
     var okf = () => Math.abs(h.v - target) <= 0.55;
   } else {
-    const xt = kind === 'int' ? 0 : U.int(rng, 2, 7); target = yAt(xt);
+    const xt = U.int(rng, 0, 7); target = yAt(xt);
     ch.line(xt, S.lo, xt, S.hi, 'guide');
     const start = target > (S.lo + S.hi) / 2 ? S.lo + 0.12 * (S.hi - S.lo) : S.hi - 0.12 * (S.hi - S.lo);
     h = hy(ch, ch.X(xt), { name: `Height at x = ${xt}`, v: start, min: S.lo, max: S.hi, step: 0.1, fmt: v => `y ${f1(v)}`, onChange: () => ctx.setReady(true) });
-    prompt = kind === 'int' ? 'Drag the dot to where the line meets <b>x = 0</b>. That height is the <b>intercept</b>.' : `Drag the dot to the height the line gives at <b>x = ${xt}</b>.`;
+    prompt = `Drag the dot to the height the line gives at <b>x = ${xt}</b>.`;
     ghost = () => ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(xt), cy: ch.Y(target) }), ch.over);
     var okf = () => Math.abs(h.v - target) <= tol;
   }
   ctx.setPrompt(prompt);
-  ctx.stage.append(note(`The line starts at ${S.b0} and ${slopeTxt}.`));
   return {
     check() {
       const ok = okf(); h.lock(); ghost();
-      return { correct: ok, message: ok ? `Yes. The intercept ${S.b0} is the height at x = 0; each step of x adds the slope, ${S.b1}.` : `Not quite. Read the line itself: it starts at ${S.b0} at x = 0 and ${slopeTxt}. The green ring is where it should be.` };
+      return { correct: ok, message: ok ? `Yes. The line starts at ${S.b0} (its intercept, the height at x = 0) and ${slopeTxt}.` : `Not quite. Read the line itself: it starts at ${S.b0} and ${slopeTxt}. The green ring is where it should be.` };
     },
     solve() { h.set(target, true); }, solveWrong() { h.set(kind === 'x' ? (target > 4 ? target - 3 : target + 3) : (target > (S.lo + S.hi) / 2 ? target - 6 : target + 6), true); },
     info: { start: h.v, target, tol: kind === 'x' ? 0.55 : tol, kind },
@@ -84,14 +83,14 @@ function buildZero(ctx) {
   const fit = U.lm(xs, ys), yAt = x => fit.b0 + fit.b1 * x;
   const lo = Math.floor(Math.min(yAt(0), ...ys) / 10) * 10 - 10, hi = Math.ceil(Math.max(...ys) / 10) * 10 + 5;
   ctx.setPrompt(centred ? 'This model used <b>age minus the average age</b>. Drag the marker to the age where the intercept is read.' : 'This model used <b>age as it is</b>. Drag the marker to the age where the intercept is read.');
-  const ch = Plot(ctx, { h: roomH(ctx, 56, 190, 300), left: 44, right: 22, top: 22, bottom: 32, xr: [0, xmax], yr: [lo, hi], label: 'Scores against age in months, with the fitted line extended back to age 0' });
+  const ch = Plot(ctx, { h: roomH(ctx, 36, 190, 300), left: 44, right: 22, top: 40, bottom: 32, xr: [0, xmax], yr: [lo, hi], label: 'Scores against age in months, with the fitted line extended back to age 0' });
   ch.axisY(gridTicks(lo, hi, 20)); ch.axisX([[0, '0'], [50, '50'], [100, '100']]);
   ch.line(0, yAt(0), xmax, yAt(xmax), 'fitln');
   xs.forEach((x, i) => ch.add(sv('circle', { class: 'datadot', cx: ch.X(x), cy: ch.Y(ys[i]), r: 5 })));
   const dot = ch.add(sv('circle', { class: 'pdot', r: 7 }), ch.over), vline = ch.add(sv('line', { class: 'guide', y1: ch.top, y2: ch.H - ch.bottom }), ch.over);
   const out = note('Move the marker: the line\'s height there appears here.');
   const target = centred ? mx : 0, tol = 7;
-  const h = hx(ch, 10, { name: 'Age where the intercept is read', v: centred ? 20 : 55, min: 0, max: xmax, step: 1, fmt: v => `age ${f0(v)}`,
+  const h = hx(ch, 24, { name: 'Age where the intercept is read', v: centred ? 20 : 55, min: 0, max: xmax, step: 1, fmt: v => `age ${f0(v)}`,
     onChange: (v, u) => { dot.setAttribute('cx', ch.X(v)); dot.setAttribute('cy', ch.Y(yAt(v))); vline.setAttribute('x1', ch.X(v)); vline.setAttribute('x2', ch.X(v)); out.textContent = `The line at age ${f0(v)} says ${f1(yAt(v))}.`; if (u) ctx.setReady(true); } });
   h.set(h.v);
   ctx.stage.append(ch.svg, out);
@@ -128,7 +127,7 @@ function boundedChart(ctx, S) {
   ctx.stage.append(ch.svg); return ch;
 }
 function boundedHandle(ctx, ch, S, onChange) {
-  const yAt = x => S.fit.b0 + S.fit.b1 * x, out = ch.text(ch.W - ch.right - 4, ch.top + 22, '', 'tx tb', 'end', ch.over);
+  const yAt = x => S.fit.b0 + S.fit.b1 * x, out = ch.text(ch.left + 8, ch.top + 22, '', 'tx tb', 'start', ch.over);
   const h = hx(ch, v => ch.Y(yAt(v)), { name: 'x position on the line', v: 3, min: 0, max: 12, step: 0.1, pulse: !!onChange.pulse, fmt: v => `x ${f1(v)}, line says ${f2(yAt(v))}`,
     onChange: (v, u) => { const y = yAt(v), bad = y > 1.0001 || y < -0.0001; h.g.classList.toggle('bad', bad); out.textContent = bad ? `${f2(y)}: impossible` : `${f2(y)}`; out.classList.toggle('badtx', bad); onChange(v, y, bad, u); } });
   return h;
@@ -193,7 +192,7 @@ function buildScaleFn(ctx) {
   ctx.setPrompt(`You hold <b>${SCALE_WORD[C.from].toLowerCase()} ${xs}</b>. You want the <b>${SCALE_WORD[C.to].toLowerCase()}</b>. Tap the call that gets there.`);
   const s = Scales3(ctx, { p, drag: [], order: [C.from, C.to], label: `Probability, odds and log-odds lines showing ${SCALE_WORD[C.from]} ${xs}` });
   const goal = s.rows[C.to]; goal.label.classList.add('goal');
-  const stat = note('Tap a call: its answer lands as a hollow ring.');
+  const stat = note('Tap a call: its answer lands as a hollow ring.', 'fix2');
   const mk = fn => ({ key: fn, label: `${fn}(${xs})` });
   const tiles = Choices(U.shuffle(rng, ['plogis', 'qlogis', 'exp', 'log']).map(mk), { cols: 2, cls: 'mono', onPick: fn => {
     const [row, f] = FN_OUT[fn], r = f(x); s.clearRings(); if (isFinite(r) && s.rows[row]) s.ring(row, r);
@@ -234,23 +233,39 @@ function avgCase(rng, nCells = 4) {
   }
   throw new Error('no averaging case found');
 }
+// a-mid: three bars that end on grid lines (whole log-odds), and a marker that snaps to half steps. Every shortcut (middle bar,
+// halfway between the ends, the average of the probabilities, 0) lands at least 1.1 away from the true average.
+let AVG_MID_POOL = null;
+function avgMidCase(rng) {
+  if (!AVG_MID_POOL) {
+    AVG_MID_POOL = [];
+    for (let a = -6; a <= 6; a++) for (let b = a; b <= 6; b++) for (let c = b; c <= 6; c++) {
+      if (!a || !b || !c || a >= 0 || c <= 0 || Math.max(-a, c) < 4) continue;
+      const lg = [a, b, c], m = (a + b + c) / 3, mp = U.qlogis(U.mean(lg.map(U.plogis))), mid = (a + c) / 2;
+      if (Math.abs(m) >= 1 && Math.abs(m - mp) >= 1.1 && Math.abs(m - mid) >= 1.1 && Math.abs(m - b) >= 1.1) AVG_MID_POOL.push(lg);
+    }
+  }
+  const lg = U.shuffle(rng, U.pick(rng, AVG_MID_POOL).slice()), m = U.mean(lg), p = lg.map(U.plogis), srt = lg.slice().sort((x, y) => x - y);
+  return { p, lg, m, mp: U.qlogis(U.mean(p)), mid: (srt[0] + srt[2]) / 2, median: srt[1] };
+}
 function buildAvgMid(ctx) {
-  const rng = ctx.rng, C = avgCase(rng);
-  ctx.setPrompt('These bars are four cells on the log-odds axis. Drag the marker to their <b>average</b>.');
-  const b = LogitBars(ctx, { vals: C.lg, means: false });
+  const rng = ctx.rng, C = avgMidCase(rng), names = ['A', 'B', 'C'];
+  ctx.setPrompt('Three cells are drawn as bars on the log-odds axis. Drag the marker to the <b>average</b> of the three bars (it moves in half steps).');
+  const b = LogitBars(ctx, { vals: C.lg, names, means: false, pitch: 44, grid: true });
   const topY = 8, len = b.ch.H - b.ch.bottom + 2;
-  const startAt = rng() < 0.5 ? -4 : 4;
-  const h = hx(b.ch, topY + 4, { name: 'Average of the bars on the log-odds axis', v: startAt, min: -6.7, max: 6.7, step: 0.1, fmt: v => `${f1(v)} log-odds`, onChange: () => ctx.setReady(true) });
+  const startAt = C.m > 0 ? -3 : 3;
+  const out = note('', 'big'), say = v => `Marker at ${v < 0 ? '−' : ''}${Math.abs(v)}`;
+  const h = hx(b.ch, topY + 4, { name: 'Average of the bars on the log-odds axis', v: startAt, min: -6, max: 6, step: 0.5, fmt: v => `${f1(v)} log-odds`, onChange: v => { out.textContent = say(v); ctx.setReady(true); } });
   h.g.prepend(sv('line', { class: 'ml', x1: 0, x2: 0, y1: 10, y2: len - topY }));
-  ctx.stage.append(note('Each bar is one cell: A to D, with its probability.'));
-  const tol = 0.6;
+  ctx.stage.append(out); out.textContent = say(startAt);
+  const tol = 0.75;
   return {
     check() {
       const ok = Math.abs(h.v - C.m) <= tol; h.lock();
       b.m1 = null; const g1 = b.addMarker(C.m, 'm-logit'), g2 = b.addMarker(C.mp, 'm-prob');
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `The average of the log-odds is ${f1(C.m)}, which is probability ${prob(U.plogis(C.m))}. Averaging the probabilities instead gives ${prob(U.mean(C.p))} (hollow marker).` };
     },
-    solve() { h.set(C.m, true); }, solveWrong() { h.set(C.mp, true); }, info: { m: C.m, mp: C.mp, mid: C.mid, median: C.median, tol, start: h.v, lg: C.lg, p: C.p },
+    solve() { h.set(C.m, true); }, solveWrong() { h.set(M.clamp(C.m + (C.m > 0 ? -2 : 2), -6, 6), true); }, info: { m: C.m, mp: C.mp, mid: C.mid, median: C.median, tol, start: h.v, lg: C.lg, p: C.p },
   };
 }
 // Which flag is the probability the model reports? (X and Y sit on a probability line)
@@ -289,24 +304,23 @@ function buildAvgWhich(ctx) {
   };
 }
 function buildAvgLever(ctx) {
-  const rng = ctx.rng, idx = U.int(rng, 0, 3);
+  const rng = ctx.rng, idx = U.int(rng, 0, 2);
   let vals, T;
   for (;;) {
     const sgn = rng() < 0.5 ? 1 : -1, big = sgn * U.uni(rng, 3.8, 6.2);
-    const others = [0, 1, 2].map(() => U.uni(rng, -1.8, 1.8)); vals = others.slice(); vals.splice(idx, 0, big);
-    T = U.mean(vals); if (Math.abs(T) > 0.7 && Math.abs(T - U.mean(others.concat([0]))) > 1.0) break;
+    const others = [0, 1].map(() => U.uni(rng, -1.8, 1.8)); vals = others.slice(); vals.splice(idx, 0, big);
+    T = U.mean(vals); if (Math.abs(T) > 0.7 && Math.abs(T - U.mean(others.concat([0, 0]).slice(0, 3))) > 1.0) break;
   }
   const start = vals.slice(); start[idx] = U.uni(rng, -0.8, 0.8);
-  const names = ['A', 'B', 'C', 'D'];
-  ctx.setPrompt(`Drag cell <b>${names[idx]}</b>'s bar until the log-odds average (●) reaches the star.`);
-  const b = LogitBars(ctx, { vals: start, names, drag: [idx], means: true });
-  b.target(T); ctx.stage.append(note('● is the average of the four bars. ★ is the goal.'));
+  const names = ['A', 'B', 'C'];
+  ctx.setPrompt(`Drag cell <b>${names[idx]}</b>'s bar until the log-odds average (●) reaches the star (★).`);
+  const b = LogitBars(ctx, { vals: start, names, drag: [idx], means: true, pitch: 44 });
+  b.target(T);
   b.onChange = () => ctx.setReady(true);
-  const need = 4 * T - (U.sum(vals) - vals[idx]);
+  const need = 3 * T - (U.sum(vals) - vals[idx]);
   return {
     check() {
       const ok = Math.abs(b.meanLogit() - T) <= 0.25; b.handles[idx].lock();
-      const mp = U.mean(b.vals.map(U.plogis));
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `Cell ${names[idx]} had to go to ${prob(U.plogis(need))} to move the average that far. Near the ends of the axis a tiny change in probability is a big step in log-odds.` };
     },
     solve() { b.handles[idx].set(need, true); }, solveWrong() { b.handles[idx].set(M.clamp(need > 0 ? need - 3.2 : need + 3.2, -6.7, 6.7), true); }, info: { need, T, start: start[idx], idx, vals: vals.map((v, i) => i === idx ? need : v) },
@@ -423,13 +437,15 @@ function codingChart(ctx, cod, mA, mB, { line = false, h = roomH(ctx, 0, 190, 32
   ctx.stage.append(ch.svg); return ch;
 }
 function buildCodeTut(ctx) {
-  const mA = 36, mB = 60; let cur = 'trtA', n = 0;
-  ctx.setPrompt('Tap the flashing <b>Switch coding</b>. The same two means, a different zero.');
+  const mA = 36, mB = 60; let cur = 'trtA';
+  ctx.setPrompt('Same two group means, two ways to number the groups. Tap the flashing coding and watch where <b>0</b> falls.');
   const holder = el('div', { class: 'holder' }); const info = note('', 'big');
-  const draw = () => { holder.replaceChildren(); const saved = ctx.stage; const tmp = { stage: holder, rng: ctx.rng }; const c = codingChart(tmp, MM.CODINGS[cur], mA, mB, { line: true, h: 215 }); const k = U.coefs(MM.CODINGS[cur], mA, mB); c.add(sv('circle', { class: 'ringm', r: 14, cx: c.X(0), cy: c.Y(k.intercept) }), c.over); info.innerHTML = `Codes: ${MM.CODINGS[cur].name}. Intercept (ring) = <b>${f0(k.intercept)}</b>.`; };
-  const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center', onclick: () => { cur = 'half'; draw(); btn.disabled = true; btn.classList.remove('flash'); ctx.complete('Same data. With 0/1 the intercept is the mean of A; with −½/+½ it is halfway between A and B. Zero moved.'); } }, 'Switch coding');
-  ctx.stage.append(holder, info, btn); draw();
-  return { solve: () => btn.click() };
+  const draw = () => { holder.replaceChildren(); const tmp = { stage: holder, rng: ctx.rng }; const c = codingChart(tmp, MM.CODINGS[cur], mA, mB, { line: true, h: 190 }); const k = U.coefs(MM.CODINGS[cur], mA, mB); c.add(sv('circle', { class: 'ringm', r: 14, cx: c.X(0), cy: c.Y(k.intercept) }), c.over); info.innerHTML = `Codes: ${MM.CODINGS[cur].name}. Intercept (ring) = <b>${f0(k.intercept)}</b>.`; };
+  const tiles = Choices([{ key: 'trtA', label: MM.CODINGS.trtA.name }, { key: 'half', label: MM.CODINGS.half.name }], { cols: 2, flashKey: 'half', onPick: k => {
+    cur = 'half'; draw(); tiles.lock(); ctx.complete('Same data. With 0/1 the intercept is the mean of A; with −½/+½ it is halfway between A and B. Zero moved.'); } });
+  tiles.btns.trtA.classList.add('on'); tiles.btns.trtA.setAttribute('aria-pressed', 'true'); tiles.btns.trtA.disabled = true;
+  ctx.stage.append(holder, info, tiles.el); draw();
+  return { solve: () => tiles.pick('half', true) };
 }
 function buildCodeInt(ctx) {
   const rng = ctx.rng, key = U.pick(rng, CODE_KEYS), cod = MM.CODINGS[key], [mA, mB] = codingMeans(rng), K = U.coefs(cod, mA, mB);
@@ -472,7 +488,7 @@ function buildCodeCoef(ctx) {
 function buildCodeWhich(ctx) {
   const rng = ctx.rng, key = U.pick(rng, CODE_KEYS), cod = MM.CODINGS[key], [mA, mB] = codingMeans(rng), K = U.coefs(cod, mA, mB);
   ctx.setPrompt('These are the real group means. The model table is below. <b>Which coding</b> was used?');
-  const ch = Plot(ctx, { h: 124, left: 44, right: 14, top: 8, bottom: 30, xr: [0, 3], yr: [0, 100], label: `Group means: A ${f0(mA)}, B ${f0(mB)}` });
+  const ch = Plot(ctx, { h: 104, left: 44, right: 14, top: 8, bottom: 30, xr: [0, 3], yr: [0, 100], label: `Group means: A ${f0(mA)}, B ${f0(mB)}` });
   ch.axisY([[0, '0'], [50, '50'], [100, '100']]); ch.pline(ch.left, ch.H - ch.bottom, ch.W - ch.right, ch.H - ch.bottom, 'axis');
   ch.text(ch.X(1), ch.H - 6, 'A', 'tx tb ga', 'middle'); ch.text(ch.X(2), ch.H - 6, 'B', 'tx tb gb', 'middle');
   const a = ch.add(marker('circle', 9, 'ga'), ch.over), b = ch.add(marker('sq', 9, 'gb'), ch.over);
@@ -586,13 +602,13 @@ function buildInterThree(ctx) {
     break;
   }
   const d1 = U.interaction(m1), d2 = U.interaction(m2);
-  ctx.setPrompt('Two panels, C1 and C2, each show the A × B lines. What does the pair show?');
+  ctx.setPrompt('Two panels, C1 and C2, each show how A and B combine. Is the A × B pattern the same in both?');
   const tmp = { stage: document.createElement('div') }; const W = Math.round(stagePad(ctx.stage)); const half = Math.floor(W / 2) - 2;
   const wrap = el('div', { class: 'twopanel' }); ctx.stage.append(wrap);
-  const mk = (m, nm) => { const s = { stage: wrap, rng }; const ap = interPlot({ stage: wrap }, m, { h: 150, ylab: false, label: `Panel ${nm}: B1 and B2 lines across A1 and A2`, w: half }); ap.ch.text(ap.ch.left + 2, 18, nm, 'tx tb', 'start'); return ap; };
+  const mk = (m, nm) => { const s = { stage: wrap, rng }; const ap = interPlot({ stage: wrap }, m, { h: roomH(ctx, 64, 150, 210), ylab: false, label: `Panel ${nm}: B1 and B2 lines across A1 and A2`, w: half }); ap.ch.text(ap.ch.left + 2, 18, nm, 'tx tb', 'start'); return ap; };
   const pa = mk(m1, 'C1'), pb = mk(m2, 'C2');
   const key = kind;
-  const tiles = Choices([{ key: 'none', label: 'No A × B interaction in either' }, { key: 'same', label: 'Same A × B interaction in both' }, { key: 'differ', label: 'A × B differs: three-way interaction' }], { cols: 1, onPick: () => ctx.setReady(true) });
+  const tiles = Choices([{ key: 'none', label: 'No A × B in either' }, { key: 'same', label: 'Same A × B in both' }, { key: 'differ', label: 'Differs: three-way' }], { cols: 3, onPick: () => ctx.setReady(true) });
   ctx.stage.append(tiles.el);
   return {
     check() {

@@ -14,18 +14,18 @@ const pooledAt = (m, n, sigma, tau) => BM.pooled(m, MU4, BM.shrinkW(tau, sigma, 
 const treeLabel = (i, n, m) => `Tree ${i}: ${n} branches measured, average about ${Math.round(m)} apples`;
 
 // (sigma, tau, n) triples where a tree's own data count for roughly a third or two thirds of its estimate
-const LAND_SETS = (() => { const out = []; for (const s of [3, 4, 5]) for (const t of [1.5, 2, 3, 4, 5]) for (const n of [2, 3, 4, 5, 6, 8, 9, 12, 16]) { const w = BM.shrinkW(t, s, n); if ((w >= 0.25 && w <= 0.35) || (w >= 0.65 && w <= 0.75)) out.push({ s, t, n, w }); } return out; })();
+const LAND_SETS = (() => { const out = []; for (const s of [3, 4, 5]) for (const t of [1.5, 2, 3, 4, 5]) for (const n of [2, 3, 4, 5, 6, 8, 9, 12]) { const w = BM.shrinkW(t, s, n); if ((w >= 0.25 && w <= 0.35) || (w >= 0.65 && w <= 0.75)) out.push({ s, t, n, w }); } return out; })();
 
 // ---------------------------------------------------------------------------
 // 4.0 tutorial: slide the pooling
 // ---------------------------------------------------------------------------
 function buildPoolTut(ctx) {
   const rng = ctx.rng, spec = [[3, 11], [8, 17], [5, 27], [12, 31]];
-  ctx.setPrompt('Each row is an apple tree: small dots are its branches, the ring is its average, the dashed line is the average of all trees. Drag the flashing slider to the right.');
-  const rows = spec.map(([n, m], i) => ShrinkStrip({ m, obs: treeObs(rng, m, 4, n), mu: MU4, pooled: m, H: 38, label: treeLabel(i + 1, n, m) }));
-  const slider = AxisSlider({ values: [0], labels: ['Pooling, from none at the left to complete at the right'], step: 0.05, onChange: (v, user) => { rows.forEach((r, i) => r.set(spec[i][1] + v[0] * (MU4 - spec[i][1]))); if (v[0] >= 0.9) ctx.complete('The green dots slid to the all-trees average. With no pooling each tree keeps its own average. With complete pooling all trees are treated as one. Models usually land in between.'); } });
+  ctx.setPrompt('Grey dots are an apple tree’s branches, the green dot is the model’s estimate for the tree. Drag the flashing slider to the right.');
+  const rows = spec.map(([n, m], i) => ShrinkStrip({ m, obs: treeObs(rng, m, 4, n), mu: MU4, pooled: m, H: 42, label: treeLabel(i + 1, n, m) }));
+  const slider = AxisSlider({ values: [0], labels: ['Pooling, from none at the left to complete at the right'], step: 0.05, onChange: (v, user) => { rows.forEach((r, i) => r.set(spec[i][1] + v[0] * (MU4 - spec[i][1]))); if (v[0] >= 0.9) ctx.complete('The green dots slid to the average of all trees. No pooling keeps each tree’s own average; complete pooling treats all trees as one.'); } });
   slider.el.querySelector('.as-thumb').classList.add('flash');
-  ctx.stage.append(...rows.map(r => r.el), tick4().el, slider.el);
+  ctx.stage.append(...rows.map(r => r.el), tick4().el, slider.el, Ends('none pooling', 'complete pooling'));
   return { solve() { slider.set(0, 1, true); } };
 }
 
@@ -35,16 +35,17 @@ function buildPoolTut(ctx) {
 function buildLand(ctx) {
   const rng = ctx.rng, c = BM.pick(rng, LAND_SETS), d = r1(7 + rng() * 3) * (rng() < 0.5 ? -1 : 1), m = MU4 + d;
   const obs = treeObs(rng, m, c.s, c.n), truth = BM.pooled(m, MU4, c.w), tol = 0.12 * Math.abs(d);
-  ctx.setPrompt('Drag the green dot to where the model puts this tree: pulled toward the dashed average of all trees.');
-  const strip = ShrinkStrip({ m, obs, mu: MU4, pooled: m, tau: c.t, H: 78, r: 11, label: `One tree, ${c.n} branches measured, average ${Math.round(m)} apples; all trees average 20; trees usually differ by about ${c.t} apples` });
+  ctx.setPrompt('Few branches, or trees that are alike, pull a tree toward the average of all trees. Drag the green dot to where the model puts this tree.');
+  const strip = ShrinkStrip({ m, obs, mu: MU4, pooled: m, tau: c.t, H: 84, r: 10, label: `One tree, ${c.n} branches measured, average ${Math.round(m)} apples; all trees average 20; trees usually differ by about ${c.t} apples` });
   const slider = AxisSlider({ values: [m / 40], labels: ['Where the model puts this tree, apples per branch'], step: 0.025, onChange: v => { strip.set(v[0] * 40); ctx.setReady(slider.touched()); } });
-  const legend = el('div', { class: 'stage-note' }, `Ring: this tree’s average of ${c.n} branches (small dots). Green band: how much trees usually differ.`);
+  const legend = Legend([['ring', 'own average'], ['dash', 'all trees’ average'], ['band', 'trees usually differ']]);
+  dragOnStrip(strip.el, slider);
   ctx.stage.append(strip.el, tick4().el, slider.el, legend);
   return {
     check() {
       const v = slider.get()[0] * 40, ok = Math.abs(v - truth) <= tol + 1e-9; slider.lock();
       strip.set(truth); strip.el.setAttribute('aria-label', `Model puts the tree at about ${Math.round(truth)} apples`);
-      const lean = c.w < 0.5 ? `Few branches and trees that are alike, so its own average counts for only about ${pct(c.w)}%: the model leans mostly on the other trees.` : `Plenty of branches compared with how much trees differ, so its own average counts for about ${pct(c.w)}%: the model mostly trusts it.`;
+      const lean = c.w < 0.5 ? `Few branches next to how alike trees are: its own average counts for only about ${pct(c.w)}%, so the model leans on the other trees.` : `Plenty of branches next to how much trees differ: its own average counts for about ${pct(c.w)}%, so the model mostly trusts it.`;
       return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${lean}` };
     },
     solve() { slider.set(0, truth / 40, true); },
@@ -60,7 +61,7 @@ const MOST_S = 4, MOST_T = 3;
 function mostCase(rng) {
   const kind = BM.pick(rng, ['A', 'B', 'C']);   // chosen once, so the three kinds stay equally common
   for (let t = 0; t < 4000; t++) {
-    const ns = BM.shuffle(rng, [2, 3, 4, 6, 9, 16]).slice(0, 3);
+    const ns = BM.shuffle(rng, [2, 3, 4, 6, 9, 12]).slice(0, 3);
     const rows = ns.map(n => { const d = BM.int(rng, 3, 10), sgn = rng() < 0.5 ? -1 : 1, m = MU4 + sgn * d; return { n, d, m, p: pooledAt(m, n, MOST_S, MOST_T), move: d * (1 - BM.shrinkW(MOST_T, MOST_S, n)) }; });
     const moves = rows.map(r => r.move), win = argmax(moves), sorted = moves.slice().sort((a, b) => b - a);
     if (sorted[0] < 1.25 * sorted[1] || sorted[0] < 2.5) continue;
@@ -74,17 +75,17 @@ function mostCase(rng) {
 }
 function buildMost(ctx) {
   const rng = ctx.rng, c = mostCase(rng);
-  ctx.setPrompt('Three trees, with the dashed average of all trees. Tap the tree whose estimate the model moves the most.');
-  const strips = c.rows.map((r, i) => ShrinkStrip({ m: r.m, obs: treeObs(rng, r.m, MOST_S, r.n), mu: MU4, pooled: null, tau: MOST_T, H: 50, label: treeLabel(i + 1, r.n, r.m) }));
+  ctx.setPrompt('The model pulls each tree’s own average (ring) toward the average of all trees. Tap the tree pulled the most.');
+  const strips = c.rows.map((r, i) => ShrinkStrip({ m: r.m, obs: treeObs(rng, r.m, MOST_S, r.n), mu: MU4, pooled: null, tau: MOST_T, H: 56, label: treeLabel(i + 1, r.n, r.m) }));
   let chosen = null; const btns = strips.map((s, i) => el('button', { class: 'rowpick', 'aria-label': `Tree ${i + 1}: ${c.rows[i].n} branches, average ${Math.round(c.rows[i].m)}`, onclick: () => { chosen = i; btns.forEach((x, j) => x.classList.toggle('on', j === i)); ctx.setReady(true); } }, el('div', { class: 'barsline' }, el('span', { class: 'rownum' }, i + 1), s.el)));
   const tk = el('div', { class: 'barsline' }, el('span', { class: 'rownum', style: 'visibility:hidden' }), tick4().el);
-  ctx.stage.append(...btns, tk, el('div', { class: 'stage-note' }, 'Green band: how much trees usually differ.'));
+  ctx.stage.append(...btns, tk, Legend([['ring', 'own average'], ['dash', 'all trees’ average'], ['band', 'trees usually differ']]));
   return {
     check() {
       const ok = chosen === c.win; btns.forEach((b, i) => { b.disabled = true; b.classList.remove('on'); if (i === c.win) b.classList.add('right'); else if (i === chosen) b.classList.add('bad'); });
       strips.forEach((s, i) => s.set(c.rows[i].p));
       const w = c.rows[c.win];
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Tree ${c.win + 1} moves the most (${w.n} branches, ${w.d} apples from the average). A tree moves more when it is far from the average and its own average rests on few branches.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Tree ${c.win + 1} moves the most (${w.n} branches, ${w.d} apples from the average): far away and few branches mean a big pull.` };
     },
     solve() { btns[c.win].click(); },
     solveWrong() { btns[(c.win + 1) % 3].click(); },
@@ -108,15 +109,15 @@ function amountCase(rng) {
 }
 function buildAmount(ctx) {
   const c = amountCase(ctx.rng), a = c.a;
-  ctx.setPrompt('Four trees, five branches each. How much should the model pool them? Slide until the green dots sit where the data justify.');
-  const strips = c.groups.map((g, i) => ShrinkStrip({ m: a.means[i], obs: g, mu: a.grand, pooled: a.means[i], H: 36, r: 7, label: `Tree ${i + 1}: five branches, average ${Math.round(a.means[i])} apples` }));
+  ctx.setPrompt('Do these four trees really differ, or only look different by branch luck? Slide the pooling: low if they really differ, high if luck.');
+  const strips = c.groups.map((g, i) => ShrinkStrip({ m: a.means[i], obs: g, mu: a.grand, pooled: a.means[i], H: 42, r: 7, label: `Tree ${i + 1}: five branches, average ${Math.round(a.means[i])} apples` }));
   const slider = AxisSlider({ values: [0], labels: ['Pooling, from none at the left to complete at the right'], step: 0.05, onChange: v => { strips.forEach((s, i) => s.set(a.means[i] + v[0] * (a.grand - a.means[i]))); ctx.setReady(slider.touched()); } });
-  ctx.stage.append(...strips.map(s => s.el), tick4().el, slider.el);
+  ctx.stage.append(...strips.map(s => s.el), tick4().el, slider.el, Ends('none pooling', 'complete pooling'));
   return {
     check() {
       const v = slider.get()[0], ok = Math.abs(v - c.s) <= 0.2 + 1e-9; slider.lock();
       strips.forEach((s, i) => s.set(a.means[i] + c.s * (a.grand - a.means[i])));
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${c.alike ? 'The tree averages differ about as little as five random branches would make them, so the data call for heavy pooling.' : 'The tree averages differ far more than branch-to-branch luck explains, so the trees really are different and the model barely pools.'}` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${c.alike ? 'The averages differ only about as much as branch luck would make them: pool heavily.' : 'The averages differ far more than branch luck explains: the trees really differ, so barely pool.'}` };
     },
     solve() { slider.set(0, c.s, true); },
     solveWrong() { slider.set(0, c.alike ? 0 : 1, true); },
@@ -128,16 +129,16 @@ function buildAmount(ctx) {
 // 4.4 name the picture
 // ---------------------------------------------------------------------------
 const WHICH_NAMES = { none: 'No pooling', partial: 'Partial pooling', complete: 'Complete pooling' };
-const WHICH_ASK = { none: 'every tree stays at its own average (<b>no pooling</b>)', partial: 'trees move part way to the average, small ones most (<b>partial pooling</b>)', complete: 'every tree sits at the overall average (<b>complete pooling</b>)' };
+const WHICH_ASK = { none: 'trees stay on their rings (<b>no pooling</b>)', partial: 'trees move part way to the average (<b>partial pooling</b>)', complete: 'all trees sit at the average (<b>complete pooling</b>)' };
 function buildWhichPool(ctx) {
   const rng = ctx.rng, ns = BM.shuffle(rng, [2, 6, 16]);
   const ms = ns.map(() => MU4 + (rng() < 0.5 ? -1 : 1) * BM.int(rng, 6, 11));
   if (new Set(ms.map(m => Math.sign(m - MU4))).size < 2) ms[0] = MU4 + (ms[1] > MU4 ? -1 : 1) * Math.abs(ms[0] - MU4);
   const pos = { none: ms, complete: ms.map(() => MU4), partial: ms.map((m, i) => pooledAt(m, ns[i], MOST_S, MOST_T)) };
   const order = BM.shuffle(rng, ['none', 'partial', 'complete']), ask = BM.pick(rng, ['none', 'partial', 'complete']);
-  ctx.setPrompt(`Rings are each tree’s own average, green dots are where a model puts them. Tap the picture where ${WHICH_ASK[ask]}.`);
+  ctx.setPrompt(`Rings: each tree’s own average. Green dots: the model’s estimates. Tap the picture where ${WHICH_ASK[ask]}.`);
   let chosen = null; const btns = order.map((k, i) => {
-    const strips = ms.map((m, j) => ShrinkStrip({ m, obs: [], mu: MU4, pooled: pos[k][j], H: 22, r: 6.5, label: '' }));
+    const strips = ms.map((m, j) => ShrinkStrip({ m, obs: [], mu: MU4, pooled: pos[k][j], H: 23, r: 6, label: '' }));
     const desc = k === 'none' ? 'green dots sit on the rings' : k === 'complete' ? 'all green dots sit on the dashed line' : 'green dots sit between the rings and the dashed line';
     return el('button', { class: 'rowpick', 'aria-label': `Picture ${i + 1}: ${desc}`, onclick: () => { chosen = i; btns.forEach((x, q) => x.classList.toggle('on', q === i)); ctx.setReady(true); } }, el('div', { class: 'barsline' }, el('span', { class: 'rownum' }, i + 1), el('div', { class: 'ssgroup', role: 'img', 'aria-label': `Three trees, ${desc}` }, strips.map(s => s.el))));
   });

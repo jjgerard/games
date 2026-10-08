@@ -431,7 +431,7 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .ptable { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(var(--cols), minmax(0, 1fr)); gap: 4px; }
 .pth { font-weight: 800; text-align: center; color: var(--muted); font-size: 1rem; align-self: end; min-height: 24px; white-space: nowrap; }
 .ptn { font-weight: 800; display: flex; align-items: center; min-height: 44px; font-size: 1rem; }
-.ptc { min-height: 44px; min-width: 44px; border: 2px solid var(--line); border-radius: 10px; background: #fff; font-size: 1rem; font-weight: 700; color: var(--ink); padding: 0 2px; }
+.ptc { min-height: 52px; min-width: 44px; border: 2px solid var(--line); border-radius: 10px; background: #fff; font-size: 1rem; font-weight: 700; color: var(--ink); padding: 0 2px; }
 .ptc.on { border-color: var(--accent); background: var(--accent-tint); }
 .ptc.right { border-color: var(--good); background: var(--good-tint); }
 .ptc.wrong { border-color: var(--danger); background: var(--danger-tint); }
@@ -462,3 +462,15 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .pfill { fill: var(--accent); } .pfill.good { fill: var(--good); }
 .pickrow.two .pickbtn { flex: 1 1 calc(50% - 8px); }
 .rowpick:disabled .rowname { color: var(--ink); }
+
+/* Units 2-6 additions */
+.cap { font-weight: 800; font-size: 1rem; line-height: 1.1; margin: 0 0 -4px 2px; }
+.cap.mid { text-align: center; margin-left: 0; }
+.ends { display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; line-height: 1.1; padding: 0 2px; margin-top: -6px; }
+.shrinkstrip .ss-ring { fill: none; }
+.legend { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; font-weight: 700; font-size: 1rem; line-height: 1.1; color: var(--ink); }
+.legend i { display: inline-block; width: 28px; height: 0; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.legend i.dash { border-top-style: dashed; border-top-color: #5b5348; }
+.pickbtn.two-line { line-height: 1.15; }
+.legend2 { display: flex; justify-content: center; gap: 2px 16px; flex-wrap: wrap; font-weight: 700; font-size: 1rem; line-height: 1.2; }
+.legend2 .lg { display: inline-flex; align-items: center; gap: 6px; }

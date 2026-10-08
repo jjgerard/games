@@ -16,25 +16,26 @@ const TRACE_NAMES = { ok: 'Healthy', apart: 'Chains disagree', drift: 'Still dri
 const TRACE_ALT = { ok: 'four chains overlapping like a fuzzy caterpillar', apart: 'four chains sitting at different heights', drift: 'four chains wandering slowly without settling', stray: 'three chains overlapping and one sitting apart' };
 
 function buildChainsTut(ctx) {
-  const rng = ctx.rng; ctx.setPrompt('A walker like the one in Unit 2 can start four times, from four places. Tap the flashing button to run four walkers (chains).');
-  const holder = TracePlot({ chains: [], H: 120, ylim: [-5, 5], label: 'Empty trace plot' });
+  const rng = ctx.rng; ctx.setPrompt('The walker from Unit 2 can start four times, from four different places. Tap the flashing button to run four walkers (chains).');
+  const holder = TracePlot({ chains: [], H: 170, ylim: [-5, 5], label: 'Empty trace plot' });
   const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center' }, 'Run 4 chains');
-  ctx.stage.append(holder, btn);
-  btn.addEventListener('click', () => { btn.disabled = true; btn.classList.remove('flash'); const t = TracePlot({ chains: chainsOf(rng, 'ok'), H: 120, ylim: [-5, 5], label: TRACE_ALT.ok }); holder.replaceWith(t);
-    ctx.complete('Each line is one chain’s value over time. When all four overlap like a fuzzy caterpillar, they agree: that is what a healthy trace plot looks like.'); });
+  const cap = Cap('One line per walker, step by step');
+  ctx.stage.append(cap, holder, btn);
+  btn.addEventListener('click', () => { btn.disabled = true; btn.classList.remove('flash'); const t = TracePlot({ chains: chainsOf(rng, 'ok'), H: 170, ylim: [-5, 5], label: TRACE_ALT.ok }); holder.replaceWith(t);
+    ctx.complete('When all four chains overlap like a fuzzy caterpillar, they agree: that is a healthy trace plot.'); });
   return { solve: () => btn.click() };
 }
 
 function buildTrace(ctx) {
   const rng = ctx.rng, bad = BM.shuffle(rng, ['apart', 'drift', 'stray']).slice(0, 2), kinds = BM.shuffle(rng, ['ok', ...bad]);
-  ctx.setPrompt('Four chains each, three parameters. Tap the trace plot you can trust: the healthy fuzzy caterpillar.');
+  ctx.setPrompt('Each plot shows four chains over time. Tap the plot you can trust.');
   let chosen = null; const btns = kinds.map((k, i) => el('button', { class: 'rowpick', 'aria-label': `Plot ${i + 1}: ${TRACE_ALT[k]}`, onclick: () => { chosen = i; btns.forEach((x, j) => x.classList.toggle('on', j === i)); ctx.setReady(true); } }, TracePlot({ chains: chainsOf(rng, k), H: 76, ylim: [-5, 5], label: '' })));
   ctx.stage.append(...btns);
   const answer = kinds.indexOf('ok');
   return {
     check() {
       const ok = chosen === answer; btns.forEach((b, i) => { b.disabled = true; b.classList.remove('on'); if (i === answer) b.classList.add('right'); else if (i === chosen) b.classList.add('bad'); b.prepend(el('div', { class: 'rowname' }, TRACE_NAMES[kinds[i]])); });
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Healthy chains overlap and wander around one level. Chains that sit apart, drift or stray disagree about the answer.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}Healthy chains overlap and wander around one level. Chains that sit apart, drift or stray disagree.` };
     },
     solve() { btns[answer].click(); },
     solveWrong() { btns[(answer + 1) % 3].click(); },
@@ -45,13 +46,13 @@ function buildTrace(ctx) {
 function buildRhat(ctx) {
   const rng = ctx.rng, badRow = BM.int(rng, 0, 2), names = ['Intercept', 'slope', 'sigma'];
   const rows = names.map((nm, i) => { const bad = i === badRow, rhat = bad ? r2(1.12 + rng() * 0.45) : r2(1 + rng() * 0.01), ess = bad ? BM.int(rng, 12, 70) : BM.int(rng, 1400, 3900), est = i === 2 ? r1(1 + rng() * 3) : r1(rng() * 20 - 5); return { name: nm, cells: [fmtNum(est), fmtNum(rhat, 2), String(ess)], rhat, ess }; });
-  ctx.setPrompt('Part of a brms-style summary. Rhat compares the chains (1.00 means they agree); ESS says how many independent draws you really have. Tap the row you should not trust yet.');
+  ctx.setPrompt('Rhat is 1.00 when the chains agree. ESS counts the independent draws: more is better. Tap the row you should not trust.');
   const tbl = ParamTable({ cols: ['Est.', 'Rhat', 'ESS'], rows, mode: 'row', onPick: () => ctx.setReady(true), label: 'Model summary with estimate, Rhat and effective sample size per parameter' });
   ctx.stage.append(tbl.el);
   return {
     check() {
       const p = tbl.get(), ok = p.r === badRow; tbl.reveal({ r: badRow }, ok ? null : p);
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${names[badRow]} has Rhat ${rows[badRow].cells[1]} and only ${rows[badRow].cells[2]} effective draws. Rhat should be about 1.00 (under 1.01), and ESS should be in the hundreds or thousands.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${names[badRow]} has Rhat ${rows[badRow].cells[1]} and only ${rows[badRow].cells[2]} effective draws. Rhat should be about 1.00, and ESS in the hundreds or thousands.` };
     },
     solve() { tbl.pick(badRow, 0); },
     solveWrong() { tbl.pick((badRow + 1) % 3, 0); },
@@ -61,7 +62,7 @@ function buildRhat(ctx) {
 
 function shareCase(rng) {
   for (let t = 0; t < 2000; t++) {
-    const a0 = BM.int(rng, 2, 7), b0 = BM.int(rng, 2, 7), n = BM.int(rng, 3, 24), w = BM.priorShare(a0, b0, n);
+    const a0 = BM.int(rng, 2, 6), b0 = BM.int(rng, 2, 6), n = BM.int(rng, 3, 14), w = BM.priorShare(a0, b0, n);
     if (a0 + b0 < 4 || a0 + b0 > 12 || Math.abs(w - 0.5) < 0.17) continue;
     return { a0, b0, n, k: BM.int(rng, 0, n), w };
   }
@@ -69,17 +70,17 @@ function shareCase(rng) {
 }
 function buildPriorShare(ctx) {
   const c = shareCase(ctx.rng);
-  ctx.setPrompt('Faint shapes are imagined (the prior), bright ones are real draws. Slide the divider to the share of the final belief that comes from the prior.');
-  const t = Tray(); t.el.classList.add('wrap');
-  for (let i = 0; i < c.a0; i++) t.add('c', { size: 18, cls: 'imag' }); for (let i = 0; i < c.b0; i++) t.add('s', { size: 18, cls: 'imag' });
-  for (let i = 0; i < c.k; i++) t.add('c', { size: 18 }); for (let i = 0; i < c.n - c.k; i++) t.add('s', { size: 18 });
+  ctx.setPrompt('The prior counts as imagined shapes added to the real ones. Slide the divider to the prior’s share of all the shapes.');
+  const t1 = Tray(), t2 = Tray(); t1.el.classList.add('wrap'); t2.el.classList.add('wrap');
+  for (let i = 0; i < c.a0; i++) t1.add('c', { size: 24, cls: 'imag' }); for (let i = 0; i < c.b0; i++) t1.add('s', { size: 24, cls: 'imag' });
+  for (let i = 0; i < c.k; i++) t2.add('c', { size: 24 }); for (let i = 0; i < c.n - c.k; i++) t2.add('s', { size: 24 });
   const bar = ShareBar({ value: 0.5, leftClass: 'bar-acc', rightClass: 'bar-or', leftText: 'prior', rightText: 'data', label: 'Share of the belief from the prior' });
   bar.el.addEventListener('pointerup', () => ctx.setReady(bar.touched())); bar.el.addEventListener('keyup', () => ctx.setReady(bar.touched()));
-  ctx.stage.append(t.el, bar.el);
+  ctx.stage.append(Cap(`Imagined (the prior): ${c.a0 + c.b0}`), t1.el, Cap(`Real draws: ${c.n}`), t2.el, bar.el);
   return {
     check() {
       const ok = Math.abs(bar.get() - c.w) <= 0.1 + 1e-9; bar.lock(); bar.ghost(c.w);
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${c.a0 + c.b0} imagined shapes against ${c.n} real ones: the prior supplies about ${pct(c.w)}%. ${c.w > 0.5 ? 'Here the prior outweighs the data.' : 'Here the data outweigh the prior.'}` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${c.a0 + c.b0} imagined against ${c.n} real: the prior supplies about ${pct(c.w)}%. ${c.w > 0.5 ? 'The prior outweighs the data.' : 'The data outweigh the prior.'}` };
     },
     solve() { bar.set(c.w, true); ctx.setReady(true); },
     solveWrong() { bar.set(c.w < 0.5 ? c.w + 0.4 : c.w - 0.4, true); ctx.setReady(true); },
@@ -98,9 +99,9 @@ function outgrowCase(rng) {
 }
 function buildOutgrow(ctx) {
   const c = outgrowCase(ctx.rng), nOf = v => 5 + 5 * Math.round(v * 11);
-  ctx.setPrompt(`Two people start from different priors: a flat one and a firm one (${c.a + c.b - 2} imagined shapes, half circles). Real draws are ${pct(c.p)}% circles. How few draws make their beliefs agree to within 3 points?`);
-  const cv = CurveView({ a: 2, b: 2, height: 100 }), label = el('div', { class: 'livelabel' });
-  const draw = () => { const n = nOf(slider.get()[0]), k = Math.round(c.p * n); cv.update({ a: 1 + k, b: 1 + n - k, ghost: [c.a + k, c.b + n - k] }); label.textContent = `${n} draws: the two beliefs differ by ${Math.round(BM.meanGap(c.a, c.b, n, c.p) * 100)} points`; ctx.setReady(slider.touched()); };
+  ctx.setPrompt(`Solid: a flat prior. Dashed: a firm prior. Real draws are ${pct(c.p)}% circles. Slide to the fewest draws that bring the two beliefs within 3 points.`);
+  const cv = CurveView({ a: 2, b: 2, height: 130 }), label = el('div', { class: 'livelabel' });
+  const draw = () => { const n = nOf(slider.get()[0]), k = Math.round(c.p * n); cv.update({ a: 1 + k, b: 1 + n - k, ghost: [c.a + k, c.b + n - k] }); label.textContent = `${n} draws: the beliefs differ by ${Math.round(BM.meanGap(c.a, c.b, n, c.p) * 100)} points`; ctx.setReady(slider.touched()); };
   const slider = AxisSlider({ values: [0], labels: ['Number of real draws'], step: 1 / 11, onChange: draw });
   const ticks = TickRow({ xd: [5, 60], ticks: [5, 20, 40, 60], label: 'Number of draws, 5 to 60' });
   ctx.stage.append(cv.el, label, slider.el, ticks.el); draw();
@@ -108,7 +109,7 @@ function buildOutgrow(ctx) {
     check() {
       const n = nOf(slider.get()[0]), ok = n >= c.nStar && n <= c.nStar + 5; slider.lock();
       const why = ok ? '' : n < c.nStar ? ' Too few: the priors still pull the two beliefs apart.' : ' More than needed.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}About ${c.nStar} draws are enough. With few data the prior matters; with enough data different priors lead to nearly the same answer.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}About ${c.nStar} draws are enough. With enough data, different priors lead to nearly the same answer.` };
     },
     solve() { slider.set(0, (c.nStar - 5) / 55, true); },
     solveWrong() { slider.set(0, c.nStar > 25 ? 0 : 1, true); },

@@ -24,7 +24,7 @@ function genXY(rng, c, { n = 12, xr = c.xr, ydom = c.yd } = {}) {
   throw new Error('no line data');
 }
 const fitY = (f, x) => f.a + f.b * x;
-function linePlot(c, { xd = c.xd, yd = c.yd, H = 196, label = '' } = {}) {
+function linePlot(c, { xd = c.xd, yd = c.yd, H = 232, label = '' } = {}) {
   return Plot({ H, xd, yd, xticks: c.xt, yticks: c.yt, xTitle: c.xName, yTitle: c.yName, label, grid: true });
 }
 const ptsDraw = (pl, xs, ys, cls = 'pdot grey', r = 5) => xs.map((x, i) => S.dot(pl.sx(x), pl.sy(ys[i]), r, cls));
@@ -32,7 +32,7 @@ const lineDraw = (pl, y0, y1, cls = 'pline', x0 = pl.xd[0], x1 = pl.xd[1]) => S.
 const lineAt = (pl, a, b, cls) => lineDraw(pl, a + b * pl.xd[0], a + b * pl.xd[1], cls);
 
 // dots piled up above a number line
-function dotStack(pl, vals, { r = 5, dy = 11, cls = 'pdot grey' } = {}) {
+function dotStack(pl, vals, { r = 6.5, dy = 13, cls = 'pdot grey' } = {}) {
   const rows = {};
   return vals.map(v => { const k = Math.round(v); rows[k] = (rows[k] || 0) + 1; return S.dot(pl.sx(k), pl.sy(0) - r - 2 - (rows[k] - 1) * dy, r, cls); });
 }
@@ -41,14 +41,14 @@ function dotStack(pl, vals, { r = 5, dy = 11, cls = 'pdot grey' } = {}) {
 // 3.0 / 3.1 intercept-only: one typical value and its spread
 // ---------------------------------------------------------------------------
 const MEAN_XD = [0, 40], MEAN_TICKS = [0, 10, 20, 30, 40];
-function meanStrip() { return Strip({ xd: MEAN_XD, ticks: MEAN_TICKS, H: 106, label: '' }); }
+function meanStrip() { return Strip({ xd: MEAN_XD, ticks: MEAN_TICKS, H: 132, label: '' }); }
 function buildMeanTut(ctx) {
   const rng = ctx.rng, vals = Array.from({ length: 15 }, () => Math.round(18 + 3.2 * BM.randn(rng)));
   ctx.setPrompt('Fifteen seedlings, each a dot at its height in cm. One marker is the model’s single guess for a typical height. Drag the flashing marker.');
   const pl = meanStrip(); pl.setLabel(`Fifteen seedling heights between ${Math.min(...vals)} and ${Math.max(...vals)} centimetres`);
   const label = el('div', { class: 'livelabel' });
   const draw = m => { pl.draw([...dotStack(pl, vals), S.line(pl.sx(m), pl.sy(1), pl.sx(m), pl.sy(0), 'pline dash')]); label.textContent = `Guess for a typical height: ${Math.round(m)} cm`; };
-  const slider = AxisSlider({ values: [0.075], labels: ['Typical height'], step: 0.025, onChange: (v, user) => { draw(toUnits(v[0], MEAN_XD)); if (user && Math.abs(v[0] - 0.075) > 0.1) ctx.complete('That marker is the model’s whole idea of a seedling: one typical value. It is called the intercept, because with no predictors the intercept is all there is.'); } });
+  const slider = AxisSlider({ values: [0.075], labels: ['Typical height'], step: 0.025, onChange: (v, user) => { draw(toUnits(v[0], MEAN_XD)); if (user && Math.abs(v[0] - 0.075) > 0.1) ctx.complete('That marker is the model’s whole idea of a seedling: one typical value. It is called the intercept.'); } });
   slider.el.querySelector('.as-thumb').classList.add('flash');
   draw(toUnits(0.075, MEAN_XD)); ctx.stage.append(pl.el, slider.el, label);
   return { solve() { slider.set(0, 0.45, true); } };
@@ -67,20 +67,20 @@ function meanCase(rng) {
 }
 function buildMean(ctx) {
   const c = meanCase(ctx.rng);
-  ctx.setPrompt('Same idea, with a spread. Drag the left handle to the typical height and the right handle to one spread (sigma) above it. The band should hold about two thirds of the dots.');
+  ctx.setPrompt('Drag the left handle to where the dots balance. Drag the right handle so the shaded band holds about 2 in 3 of the dots.');
   const pl = meanStrip(); pl.setLabel(`Fifteen seedling heights, most between ${Math.round(c.mean - c.sd)} and ${Math.round(c.mean + c.sd)} centimetres`);
   const label = el('div', { class: 'livelabel' });
   const get = () => { const [a, b] = slider.get().map(v => toUnits(v, MEAN_XD)); return { mu: a, sigma: b - a }; };
   const draw = () => { const { mu, sigma } = get(); const inside = c.vals.filter(v => Math.abs(v - mu) <= sigma).length;
     pl.draw([S.rect(pl.sx(mu - sigma), pl.sy(1), pl.sx(mu + sigma) - pl.sx(mu - sigma), pl.sy(0) - pl.sy(1), 'pband'), ...dotStack(pl, c.vals), S.line(pl.sx(mu), pl.sy(1), pl.sx(mu), pl.sy(0), 'pline dash')]);
     label.textContent = `Typical ${Math.round(mu)} cm, spread ${Math.round(sigma)} cm: the band holds ${inside} of 15 dots`; ctx.setReady(slider.touched()); };
-  const slider = AxisSlider({ values: [0.5, 0.525], labels: ['Typical height', 'One spread above it'], step: 0.025, minGap: 0.02, onChange: draw });
+  const slider = AxisSlider({ values: [0.45, 0.6], labels: ['Typical height', 'One spread above it'], step: 0.025, minGap: 0.02, onChange: draw });
   draw(); ctx.stage.append(pl.el, slider.el, label);
   return {
     check() {
       const { mu, sigma } = get(), okM = Math.abs(mu - c.mean) <= 1.5 + 1e-9, okS = Math.abs(sigma - c.sd) <= 0.3 * c.sd + 0.3 + 1e-9, ok = okM && okS; slider.lock();
-      const why = ok ? '' : !okM ? ' The typical height is the balance point of the dots.' : sigma < c.sd ? ' Your spread is too small.' : ' Your spread is too big.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}Typical height ${fmtNum(c.mean)} cm, spread ${fmtNum(c.sd)} cm. The model "height = intercept + noise" has exactly these two numbers: the intercept and sigma.` };
+      const why = ok ? '' : !okM ? ' Typical is where the dots balance.' : sigma < c.sd ? ' The band is too narrow.' : ' The band is too wide.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}Typical ${fmtNum(c.mean)} cm, spread ${fmtNum(c.sd)} cm. The model has just these two numbers: the intercept and the spread, called sigma.` };
     },
     solve() { const a = toShare(c.mean, MEAN_XD), b = toShare(c.mean + c.sd, MEAN_XD); if (a > slider.get()[1]) { slider.set(1, b, true); slider.set(0, a, true); } else { slider.set(0, a, true); slider.set(1, b, true); } },
     solveWrong() { const w = c.mean > 20 ? c.mean - 8 : c.mean + 8, a = toShare(w, MEAN_XD), b = toShare(w + c.sd, MEAN_XD); if (w > c.mean) { slider.set(1, b, true); slider.set(0, a, true); } else { slider.set(0, a, true); slider.set(1, b, true); } },
@@ -133,16 +133,16 @@ function buildNoise(ctx) {
   const rng = ctx.rng, c = u3ctx(rng);
   let d; do { d = genXY(rng, c, { n: 40 }); } while (d.fit.sigma < 1.5 || d.fit.sigma > 4.5);
   const f = d.fit, zs = d.xs.map(() => BM.randn(rng)), SMAX = 8;
-  ctx.setPrompt('The line is fixed. Real plants (hollow) scatter around it. Slide sigma until the red simulated plants scatter as much as the real ones.');
-  const pl = linePlot(c, { H: 190, label: `Forty real plants scattered around a fitted line, with simulated plants beside them` });
+  ctx.setPrompt('Hollow dots are real plants around the fixed line. Slide sigma until the red simulated dots scatter as much as the real ones.');
+  const pl = linePlot(c, { H: 214, label: `Forty real plants scattered around a fitted line, with simulated plants beside them` });
   const label = el('div', { class: 'livelabel' });
-  const draw = s => { pl.draw([lineAt(pl, f.a, f.b, 'pline good'), ...ptsDraw(pl, d.xs, d.ys, 'pdot ghostdot', 4.5), ...d.xs.map((x, i) => S.dot(pl.sx(x), pl.sy(fitY(f, x) + s * zs[i]), 4, 'pdot sim'))]); label.textContent = `Sigma: ${fmtNum(s)} cm (0 would mean no scatter at all)`; };
+  const draw = s => { pl.draw([lineAt(pl, f.a, f.b, 'pline good'), ...ptsDraw(pl, d.xs, d.ys, 'pdot ghostdot', 4.5), ...d.xs.map((x, i) => S.dot(pl.sx(x), pl.sy(fitY(f, x) + s * zs[i]), 4, 'pdot sim'))]); label.textContent = `Sigma, the scatter: ${fmtNum(s)} cm`; };
   const slider = AxisSlider({ values: [0], labels: ['Sigma, the scatter around the line, in cm'], step: 0.025, onChange: v => { draw(v[0] * SMAX); ctx.setReady(slider.touched()); } });
   draw(0); ctx.stage.append(pl.el, label, slider.el);
   return {
     check() {
       const s = slider.get()[0] * SMAX, ok = Math.abs(s - f.sigma) <= 0.3 * f.sigma + 0.3 + 1e-9; slider.lock();
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}The real scatter is about ${fmtNum(f.sigma)} cm. The line is only the average: simulated data is the line plus noise of size sigma.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}The real scatter is about ${fmtNum(f.sigma)} cm. Simulated data is the line plus noise of size sigma.` };
     },
     solve() { slider.set(0, f.sigma / SMAX, true); },
     solveWrong() { slider.set(0, f.sigma > 3 ? 0.04 : 0.8, true); },
@@ -161,8 +161,8 @@ const PRIOR_VARIANTS = [
 const PRIOR_QS = Array.from({ length: 25 }, (_, i) => BM.normQuantile((i + 0.5) / 25));
 function buildSlopePrior(ctx) {
   const v = BM.pick(ctx.rng, PRIOR_VARIANTS), m = v.m, SMAX = 1.6 * m;
-  ctx.setPrompt('Lines the prior allows. Plants cannot go below 0 or above 40 cm. Slide the spread so nearly all lines stay in the frame.');
-  const pl = Plot({ H: 196, xd: v.xd, yd: v.yd, xticks: v.xt, yticks: [0, 10, 20, 30, 40], xTitle: v.xName, yTitle: v.yName, grid: true, label: 'A fan of 25 possible lines through the middle of the frame' });
+  ctx.setPrompt('Each line is a slope the prior allows. Plants cannot go below 0 or above 40 cm. Slide until nearly all lines stay in the frame.');
+  const pl = Plot({ H: 214, xd: v.xd, yd: v.yd, xticks: v.xt, yticks: [0, 10, 20, 30, 40], xTitle: v.xName, yTitle: v.yName, grid: true, label: 'A fan of 25 possible lines through the middle of the frame' });
   const mx = (v.xd[0] + v.xd[1]) / 2, my = 20, label = el('div', { class: 'livelabel' });
   const draw = (s, flag = false) => { pl.draw(PRIOR_QS.map(z => { const slope = z * s, out = Math.abs(slope) > m; return lineDraw(pl, my + slope * (v.xd[0] - mx), my + slope * (v.xd[1] - mx), 'pline fine' + (flag && out ? ' circ' : '')); })); label.textContent = `Prior spread of the slope: ${fmtNum(s, 2)} ${v.per}`; };
   const slider = AxisSlider({ values: [0.5], labels: ['Prior spread of the slope'], step: 0.02, onChange: x => { draw(x[0] * SMAX); ctx.setReady(slider.touched()); } });
@@ -228,7 +228,7 @@ function fuzzCase(rng) {
 function buildFuzz(ctx) {
   const k = fuzzCase(ctx.rng), c = U3C.seed, f = k.d.fit, farEnd = k.side === 'right' ? 0 : 40;
   ctx.setPrompt(k.ask === 'most' ? 'Each faint line is a possible fit given the data. Drag the marker to where the lines disagree the most about the height.' : 'Each faint line is a possible fit given the data. Drag the marker to where the lines agree the most about the height.');
-  const pl = Plot({ H: 196, xd: [0, 40], yd: [0, 50], xticks: [0, 10, 20, 30, 40], yticks: [0, 10, 20, 30, 40, 50], xTitle: 'days', yTitle: 'cm', grid: true, label: `Dots from ${k.xr[0]} to ${k.xr[1]} days and forty faint possible lines; the lines fan out far from the dots and pinch together near them` });
+  const pl = Plot({ H: 232, xd: [0, 40], yd: [0, 50], xticks: [0, 10, 20, 30, 40], yticks: [0, 10, 20, 30, 40, 50], xTitle: 'days', yTitle: 'cm', grid: true, label: `Dots from ${k.xr[0]} to ${k.xr[1]} days and forty faint possible lines; the lines fan out far from the dots and pinch together near them` });
   const draw = x => pl.draw([...k.lines.map(l => lineAt(pl, l.a, l.b, 'pline fine')), ...ptsDraw(pl, k.d.xs, k.d.ys, 'pdot grey', 4.5), S.line(pl.sx(x), pl.sy(0), pl.sx(x), pl.sy(50), 'pline dash')]);
   const h = pl.handle({ axis: 'x', x: 20, y: 4, min: 0, max: 40, step: 1, label: 'Marker position, in days', fmt: v => `${v} days`, onChange: (v, user) => { draw(v); if (user) ctx.setReady(true); } });
   draw(20); ctx.stage.append(pl.el);
@@ -236,7 +236,7 @@ function buildFuzz(ctx) {
   return {
     check() {
       const x = h.get(), ok = okAt(x); h.lock();
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}The lines pinch together near the middle of the data (around day ${Math.round(f.xb)}) and fan out the further you go from it, most of all at day ${farEnd}. A far-away intercept is very uncertain.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}The lines pinch together near the middle of the data (day ${Math.round(f.xb)}) and fan out the further you go, most at day ${farEnd}.` };
     },
     solve() { h.set(k.ask === 'most' ? farEnd : f.xb, true); },
     solveWrong() { h.set(k.ask === 'most' ? f.xb : farEnd, true); },
@@ -249,8 +249,8 @@ function buildFuzz(ctx) {
 // ---------------------------------------------------------------------------
 function buildCentre(ctx) {
   const rng = ctx.rng, c = U3C.seed, xr = BM.pick(rng, [[16, 36], [4, 24]]), d = genXY(rng, { ...c, xr, a: [4, 8], b: [0.5, 0.8] }, { n: 12 }), f = d.fit, yb = BM.mean(d.ys);
-  ctx.setPrompt('The intercept is the line’s height where x is 0. Drag the vertical marker to the day where that height would equal the average height of all the plants (dashed).');
-  const pl = Plot({ H: 196, xd: [0, 40], yd: [0, 40], xticks: [0, 10, 20, 30, 40], yticks: [0, 10, 20, 30, 40], xTitle: 'days', yTitle: 'cm', grid: true, label: `Twelve seedlings from ${xr[0]} to ${xr[1]} days with their line and a dashed line at their average height` });
+  ctx.setPrompt('Drag the vertical marker to the day where the green line is as high as the dashed average height of all the plants.');
+  const pl = Plot({ H: 214, xd: [0, 40], yd: [0, 40], xticks: [0, 10, 20, 30, 40], yticks: [0, 10, 20, 30, 40], xTitle: 'days', yTitle: 'cm', grid: true, label: `Twelve seedlings from ${xr[0]} to ${xr[1]} days with their line and a dashed line at their average height` });
   const label = el('div', { class: 'livelabel' });
   const draw = x => { pl.draw([S.line(pl.sx(0), pl.sy(yb), pl.sx(40), pl.sy(yb), 'pline dash grey'), lineAt(pl, f.a, f.b, 'pline good'), ...ptsDraw(pl, d.xs, d.ys, 'pdot grey', 4.5), S.line(pl.sx(x), pl.sy(0), pl.sx(x), pl.sy(40), 'pline'), S.dot(pl.sx(x), pl.sy(fitY(f, x)), 7, 'pdot hollow')]); label.textContent = `Line height at day ${Math.round(x)}: ${fmtNum(fitY(f, x))} cm. Average: ${fmtNum(yb)} cm`; };
   const h = pl.handle({ axis: 'x', x: 0, y: 4, min: 0, max: 40, step: 1, label: 'Where x is zero, in days', fmt: v => `day ${v}`, onChange: (v, user) => { draw(v); if (user) ctx.setReady(true); } });
@@ -258,7 +258,7 @@ function buildCentre(ctx) {
   return {
     check() {
       const x = h.get(), ok = Math.abs(x - f.xb) <= 2 + 1e-9; h.lock();
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}A fitted line always passes through (average x, average y), here day ${Math.round(f.xb)}. If you subtract the average day from every x, the intercept becomes the typical height instead of a height at day 0.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}The line passes through (average day, average height): day ${Math.round(f.xb)}. Counting days from there makes the intercept the typical height.` };
     },
     solve() { h.set(Math.round(f.xb), true); },
     solveWrong() { h.set(f.xb > 20 ? 2 : 38, true); },
@@ -272,7 +272,7 @@ UNITS[3] = {
   subs: [
     { id: 'u3-mean-tut', name: 'First marker', blurb: 'One typical value.', kind: 'tutorial', build: buildMeanTut, help: 'Drag the flashing marker along the line of dots. That is the only thing you can do here.' },
     { id: 'u3-mean', name: 'Typical and spread', blurb: 'An intercept and a sigma.', kind: 'streak', target: 5, hearts: 2, build: buildMean,
-      help: 'Put the left handle where the dots balance, and the right handle one spread above it. The band between should hold about two thirds of the dots. The label counts them for you.' },
+      help: 'Put the left handle where the dots balance. Move the right handle until the shaded band holds about two thirds of the dots; the label counts them for you. The distance between the handles is the spread, called sigma.' },
     { id: 'u3-line-tut', name: 'First line', blurb: 'Tilt a line.', kind: 'tutorial', build: buildLineTut, help: 'Drag the flashing handle up or down. That is the only thing you can do here.' },
     { id: 'u3-fit', name: 'Fit by eye', blurb: 'A line through the dots.', kind: 'streak', target: 5, hearts: 2, build: buildFit,
       help: 'Drag the two handles so the line runs through the middle of the dots. Pressing anywhere on the plot moves the nearer handle. Within about 3 cm at both ends counts as right.' },

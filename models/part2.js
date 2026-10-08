@@ -13,13 +13,14 @@ const poolPick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
 // Level 8: Why not just average?
 // ---------------------------------------------------------------------------
 function buildAvgTutM(ctx) {
-  ctx.setPrompt('Each row is one person; each dot is one answer. Tap the flashing person.');
-  const rows = PersonRows([{ label: 'P1', n: 5 }, { label: 'P2', n: 5 }, { label: 'P3', n: 5 }], { flashIdx: 1, only: 1, onPick: i => { if (i === 1) ctx.complete('Those five dots all came from one person. They are not five independent pieces of evidence about people.'); } });
-  ctx.stage.append(rows.el);
-  return { solve: () => rows.rows[1].click() };
+  ctx.setPrompt('This row is one person; each dot is one answer. How many <b>independent people</b> is that? Tap the flashing +.');
+  const rows = PersonRows([{ label: 'P1', n: 5 }]);
+  const st = Stepper({ value: 0, min: 0, max: 9, label: 'People', flash: true, onChange: v => { if (v >= 1) { st.lock(); ctx.complete('Five dots, but all from one person: that is one independent person, not five pieces of evidence about people.'); } } });
+  ctx.stage.append(rows.el, st.el);
+  return { solve: () => st.set(1, true) };
 }
 function buildUnits(ctx) {
-  const rng = ctx.rng, nA = U.int(rng, 2, 3), nB = U.int(rng, 2, 3), grp = U.pick(rng, ['A', 'B']);
+  const rng = ctx.rng, nA = U.int(rng, 2, 3), nB = 5 - nA, grp = U.pick(rng, ['A', 'B']);
   const people = [...Array.from({ length: nA }, (_, i) => ({ label: 'P' + (i + 1), n: U.int(rng, 3, 8), group: 'A' })), ...Array.from({ length: nB }, (_, i) => ({ label: 'P' + (nA + i + 1), n: U.int(rng, 3, 8), group: 'B' }))];
   const target = grp === 'A' ? nA : nB, dots = people.filter(p => p.group === grp).reduce((s, p) => s + p.n, 0);
   ctx.setPrompt(`Each row is one person. How many <b>independent people</b> are in group ${grp === 'A' ? 'A (orange circles)' : 'B (blue squares)'}?`);
@@ -97,8 +98,8 @@ function gridSpec(D, names) {
   return { cols: [`${b}1`, `${b}2`, `${b}1`, `${b}2`], colGroups: [{ label: `${a}1`, span: 2 }, { label: `${a}2`, span: 2 }] };
 }
 function buildGridTut(ctx) {
-  ctx.setPrompt('A design table: a row per person, a column per condition. Tap the flashing cell: P1 was tested in condition A.');
-  const g = DesignGrid({ rows: ['P1', 'P2'], cols: ['A', 'B'], tap: true, flashCell: [0, 0], tapOnly: [0, 0], caption: 'Design table', onTap: () => { g.lock(); ctx.complete('A filled cell means that person has data in that condition. P1 in both A and B would mean the condition is within people.'); } });
+  ctx.setPrompt('A design table: a row per person, a column per condition. P1 was tested in condition A. Tap the flashing cell.');
+  const g = DesignGrid({ rows: ['P1', 'P2'], cols: ['A', 'B'], cell: 72, cellH: 60, tap: true, flashCell: [0, 0], tapOnly: [0, 0], caption: 'Design table', onTap: () => { g.lock(); ctx.complete('A filled cell means that person has data in that condition. P1 in both A and B would mean the condition is within people.'); } });
   ctx.stage.append(g.el);
   return { solve: () => g.toggle(0, 0, true) };
 }
@@ -108,7 +109,7 @@ function buildGridFill(ctx) {
   const desc = describeDesign(D, names, kind);
   ctx.setPrompt(`${desc} Tap every cell that holds data.`);
   const rows = ['P1', 'P2', 'P3', 'P4'];
-  const g = DesignGrid({ rows, cols: spec.cols, colGroups: spec.colGroups, tap: true, caption: 'Design table to fill in', onTap: () => ctx.setReady(g.filled().length > 0) });
+  const g = DesignGrid({ rows, cols: spec.cols, colGroups: spec.colGroups, tap: true, cell: D.two ? 56 : 84, cellH: 46, caption: 'Design table to fill in', onTap: () => ctx.setReady(g.filled().length > 0) });
   ctx.stage.append(g.el);
   const want = [...D.cells];
   return {
@@ -126,7 +127,7 @@ function buildGridFill(ctx) {
 function buildGridLabel(ctx) {
   const rng = ctx.rng, kind = U.pick(rng, DESIGN_KINDS), names = U.pick(rng, FACTOR_NAMES), D = makeDesign(rng, kind), spec = gridSpec(D, names);
   ctx.setPrompt('Here is who has data where. For each factor: <b>within</b> people or <b>between</b> people?');
-  const g = DesignGrid({ rows: ['P1', 'P2', 'P3', 'P4'], cols: spec.cols, colGroups: spec.colGroups, dots: (r, c) => D.cells.has(r + ':' + c) ? 1 : 0, cell: D.two ? 40 : 56, cellH: 32, caption: 'Observed design' });
+  const g = DesignGrid({ rows: ['P1', 'P2', 'P3', 'P4'], cols: spec.cols, colGroups: spec.colGroups, dots: (r, c) => D.cells.has(r + ':' + c) ? 1 : 0, cell: D.two ? 56 : 84, cellH: 36, caption: 'Observed design' });
   const facs = D.two ? [names[0], names[1]] : [names[0]], truth = D.two ? [D.F1, D.F2] : [D.F1], picks = [];
   // picking a label tints that factor's headers in the grid (blue = within, orange = between; the words are on the buttons too)
   const heads = D.two ? [[...g.el.querySelectorAll('.dg-grp')], [...g.el.querySelectorAll('.dg-col')]] : [[...g.el.querySelectorAll('.dg-col')]];
@@ -146,6 +147,7 @@ function nestPatterns() {
   const R = 2, C = 6, mk = f => Array.from({ length: R }, (_, r) => Array.from({ length: C }, (_, c) => f(r, c)));
   return { nested: mk((r, c) => (c < 3 ? r === 0 : r === 1)), crossed: mk(() => true), partial: mk((r, c) => r === 0 ? c < 4 : c > 1) };
 }
+const one = w => (w === 'people' ? 'person' : w.slice(0, -1));
 const NEST_PAIRS = [['schools', 'classrooms'], ['hospitals', 'wards'], ['people', 'items'], ['people', 'sessions']];
 function buildNest(ctx) {
   const rng = ctx.rng, [A, B] = U.pick(rng, NEST_PAIRS), pat = nestPatterns(), ask = U.pick(rng, ['nested', 'crossed']);
@@ -162,7 +164,7 @@ function buildNest(ctx) {
   ctx.stage.append(wrap);
   return {
     check() { const ok = chosen === ask; for (const b of Object.values(btns)) b.disabled = true; btns[ask].classList.add('right'); if (!ok) btns[chosen].classList.add('wrongc');
-      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + { nested: `Nested: each ${B.slice(0, -1)} appears under only one of the ${A}, so the blocks sit apart.`, crossed: `Crossed: every ${A.slice(0, -1)} is paired with every ${B.slice(0, -1)}, so the grid is full.` }[ask] + ' The third grid is partly crossed: neither.' }; },
+      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + { nested: `Nested: each ${one(B)} appears under only one of the ${A}, so the blocks sit apart.`, crossed: `Crossed: every ${one(A)} is paired with every ${one(B)}, so the grid is full.` }[ask] + ' The third grid is partly crossed: neither.' }; },
     solve() { pick(ask); }, solveWrong() { pick(order.find(k => k !== ask)); }, info: { ask, order },
   };
 }
@@ -214,7 +216,7 @@ function buildRIMatch(ctx) {
   const tol = 0.8;
   return {
     check() { const ok = hs.every((h, i) => Math.abs(h.v - D.bh * 5 - D.own[i]) <= tol); hs.forEach(h => h.lock()); D.own.forEach((a, i) => ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(5), cy: ch.Y(a + D.bh * 5) }), ch.over));
-      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + 'Each person\'s own intercept is how far their line sits from the group line. A random-intercept model treats these gaps as draws from one spread of people.' }; },
+      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + 'Each gap between a person\'s line and the group line is their own intercept. The model treats the gaps as draws from one spread.' }; },
     solve() { hs.forEach((h, i) => h.set(D.own[i] + D.bh * 5, true)); }, solveWrong() { hs.forEach((h, i) => h.set(M.clamp(D.grand + D.bh * 5, lo + 0.5, hi - 0.5) + (i === 0 ? 0 : 0), true)); },
     info: { own: D.own, grand: D.grand, bh: D.bh, tol, starts: startOff, pts: D.pts },
   };
@@ -248,11 +250,16 @@ function buildPull(ctx) {
 // ---------------------------------------------------------------------------
 // Level 11: Random-effects notation
 // ---------------------------------------------------------------------------
+// printouts come from real fits where the grouping factor was called id; the game calls it subj everywhere
+const gname = g => (g === 'id' ? 'subj' : g);
 const FORM_PREFIX = 'y ~ cond +';
+// a formula for a prompt: each piece is unbreakable, so a line never splits inside a term
+const codeNW = t => `<code class="nw">${t}</code>`;
+const formHtml = (terms, hot = -1) => [codeNW(FORM_PREFIX), ...terms.flatMap((t, i) => [i === hot ? `<u>${codeNW(t)}</u>` : codeNW(t), i < terms.length - 1 ? codeNW('+') : ''])].filter(Boolean).join(' ');
 function buildFormTut(ctx) {
-  ctx.setPrompt('Participants (<code>subj</code>) differ in baseline. Tap the flashing tile to say so in the formula.');
+  ctx.setPrompt('Participants differ in baseline. Tap the flashing tile to say so in the formula.');
   const tb = TileBuilder({ pool: [{ key: 'a', text: '(1 | subj)' }], prefix: FORM_PREFIX, flashKey: 'a', label: 'Formula', onChange: c => { if (c.length) { tb.lock(); ctx.complete('(1 | subj) reads: an intercept (1) that varies by (|) subj. Everyone gets their own baseline.'); } } });
-  ctx.stage.append(tb.el, note('<b>1</b> is the intercept. After the bar <b>|</b> comes the thing that gets its own value.'));
+  ctx.stage.append(note('In the formula: <code>y</code> is the score, <code>cond</code> the condition, <code>subj</code> the participant.'), tb.el, note('<b>1</b> is the intercept. After the bar <b>|</b> comes the thing that gets its own value.'));
   return { solve: () => tb.add('a', true) };
 }
 const BUILD_BANK = [
@@ -296,7 +303,7 @@ function componentsOf(terms) {
 }
 function buildFormRead(ctx) {
   const rng = ctx.rng, terms = U.pick(rng, READ_BANK), want = componentsOf(terms);
-  ctx.setPrompt(`<code>y ~ cond + ${terms.join(' + ')}</code><br>Tick every <b>source of variation</b> it gives the model.`);
+  ctx.setPrompt(`${formHtml(terms)}<br>Tick every <b>source of variation</b> it gives the model.`);
   const chips = ChipSet(COMPONENTS.map(c => ({ key: c.key, label: c.label })), { cols: 1, label: 'Variance components', onChange: () => ctx.setReady(true) });
   ctx.stage.append(chips.el);
   return {
@@ -306,11 +313,11 @@ function buildFormRead(ctx) {
   };
 }
 const TYPO_BANK = [
-  { bad: '(subj | 1)', why: 'The two sides are swapped. What varies goes before the bar, what it varies by goes after: (1 | subj). lme4 stops with a cryptic error.' },
-  { bad: '(1, cond | subj)', why: 'A comma is not allowed there: R cannot even read it. Join terms with +: (1 + cond | subj).' },
-  { bad: '1 | subj', why: 'Without brackets the bar splits the whole formula, so cond becomes random-only and its fixed effect disappears. R does not stop you. Write (1 | subj).' },
-  { bad: '(1 | cond)', why: 'cond has two levels you chose, and it is already a fixed effect. A random effect is for many sampled levels like subj. lme4 warns the fit is not uniquely determined.' },
-  { bad: '(1 * cond | subj)', why: 'R reads 1 * cond as just 1, so the random slope silently vanishes: no error, only an intercept. Write (1 + cond | subj).' },
+  { bad: '(subj | 1)', why: 'The sides are swapped. What varies goes before the bar, what it varies by after: (1 | subj). lme4 stops with a cryptic error.' },
+  { bad: '(1, cond | subj)', why: 'A comma is not allowed there, so R cannot read it. Join terms with +: (1 + cond | subj).' },
+  { bad: '1 | subj', why: 'Without brackets the bar splits the whole formula and the fixed effect of cond vanishes, with no error. Write (1 | subj).' },
+  { bad: '(1 | cond)', why: 'cond has two levels you chose and is already fixed. Random effects are for many sampled levels like subj; lme4 warns.' },
+  { bad: '(1 * cond | subj)', why: 'R reads 1 * cond as just 1, so the random slope silently vanishes. Write (1 + cond | subj).' },
 ];
 const GOOD_TERMS = ['(1 | subj)', '(1 + cond | subj)', '(1 | item)', '(0 + cond | subj)'];
 function buildTypo(ctx) {
@@ -336,8 +343,7 @@ function buildVCTable(ctx) {
   const rng = ctx.rng, V = U.pick(rng, VC_FORMS), askResid = rng() < 0.22, ti = U.int(rng, 0, V.terms.length - 1), term = V.terms[ti];
   const hasCorr = V.f.some(t => t.includes('1 + cond'));
   const sds = V.rows.map(() => M.round(U.uni(rng, 0.3, 3.2), 2)), corr = M.round(U.pick(rng, [-1, 1]) * U.uni(rng, 0.2, 0.7), 2);
-  const form = V.f.map((t, i) => (!askResid && i === ti) ? `<u>${t}</u>` : t).join(' + ');
-  ctx.setPrompt(`<code>y ~ cond + ${form}</code><br>` + (askResid ? 'Which row is made by <b>no term</b> in the formula?' : 'Tap the row the <u>underlined</u> term makes.'));
+    ctx.setPrompt(`${formHtml(V.f, askResid ? -1 : ti)}<br>` + (askResid ? 'Which row is made by <b>no term</b> in the formula?' : 'Tap the row the <u>underlined</u> term makes.'));
   const cols = [{ label: 'Name' }, { label: 'SD', aria: 'Standard deviation' }, ...(hasCorr ? [{ label: 'Corr', aria: 'Correlation' }] : [])];
   const tb = ModelTable({ cols, rows: V.rows.map((r, i) => ({ name: r[0], aria: `${r[0] || 'same group'} ${r[1] || 'residual'}`, cells: [r[1], f2(sds[i]), ...(hasCorr ? [r[1] === 'cond' && r[0] === '' && V.f.some(t => t.includes('1 + cond')) ? f2(corr) : ''] : [])] })), mode: 'row', caption: 'Random effects', widths: hasCorr ? [24, 30, 20, 26] : [24, 36, 40], can: (ri, ci) => ci >= 0, onTap: () => ctx.setReady(true) });
   ctx.stage.append(tb.el);
@@ -353,23 +359,20 @@ function buildVCTable(ctx) {
 // Level 12: Estimable or not?
 // ---------------------------------------------------------------------------
 function buildEstTut(ctx) {
-  ctx.setPrompt('One answer per person per item. Tap <b>Run each cell twice</b> and watch the chip.');
-  const holder = el('div', { class: 'holder' }); let twice = false;
-  const chip = el('div', { class: 'estchip off' }), draw = () => {
-    holder.replaceChildren(DesignGrid({ rows: ['P1', 'P2', 'P3'], cols: ['I1', 'I2', 'I3'], dots: () => (twice ? 2 : 1), cell: 52, caption: 'Participant by item design' }).el);
-    chip.className = 'estchip ' + (twice ? 'on' : 'off'); chip.innerHTML = `<code>(1 | subj:item)</code> ${twice ? '✓ can be estimated' : '✗ cannot be estimated'}`;
-  };
-  const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center', onclick: () => { twice = true; draw(); btn.disabled = true; btn.classList.remove('flash'); ctx.complete('With one answer per cell, "participant by item" is just the leftover noise: nothing repeats to measure it. Repeats inside a cell make it estimable.'); } }, 'Run each cell twice');
-  ctx.stage.append(holder, chip, btn); draw();
-  return { solve: () => btn.click() };
+  ctx.setPrompt('Rows are participants, columns items, dots answers: everyone answered each item twice. Tap the flashing term to tick it.');
+  const g = DesignGrid({ rows: ['P1', 'P2', 'P3'], cols: ['I1', 'I2', 'I3'], dots: () => 2, cell: 64, cellH: 46, rowW: 40, caption: 'Participant by item design, two answers in every cell' });
+  const chips = ChipSet([{ key: 'pi', label: '(1 | subj:item)' }], { cols: 1, label: 'Terms', onChange: on => { if (on.pi) { chips.lock(); ctx.complete('Two answers in every cell let the model measure how much "participant by item" varies. With only one answer per cell it could not be told from noise.'); } } });
+  chips.el.classList.add('monochips'); chips.btns.pi.classList.add('flash');
+  ctx.stage.append(g.el, chips.el);
+  return { solve: () => chips.toggle('pi', true) };
 }
 // designs as a counts matrix [person][item]
 function estDesign(rng) {
   const kind = U.pick(rng, ['one', 'two', 'unique', 'oneper']);
   let m, P, I;
-  if (kind === 'one' || kind === 'two') { P = U.int(rng, 3, 4); I = U.int(rng, 3, 4); m = Array.from({ length: P }, () => Array(I).fill(kind === 'one' ? 1 : 2)); }
-  else if (kind === 'unique') { P = 3; I = 6; m = Array.from({ length: P }, (_, p) => Array.from({ length: I }, (_, i) => (Math.floor(i / 2) === p ? 1 : 0))); }
-  else { P = 4; I = 2; m = Array.from({ length: P }, (_, p) => Array.from({ length: I }, (_, i) => (i === (p < 2 ? 0 : 1) ? 1 : 0))); }
+  if (kind === 'one' || kind === 'two') { P = 3; I = U.int(rng, 3, 4); m = Array.from({ length: P }, () => Array(I).fill(kind === 'one' ? 1 : 2)); }
+  else if (kind === 'unique') { P = 2; I = 4; m = Array.from({ length: P }, (_, p) => Array.from({ length: I }, (_, i) => (Math.floor(i / 2) === p ? 1 : 0))); }
+  else { P = 3; I = 2; m = Array.from({ length: P }, (_, p) => Array.from({ length: I }, (_, i) => (i === (p < 2 ? 0 : 1) ? 1 : 0))); }
   return { kind, m, P, I };
 }
 const estFor = m => {
@@ -379,8 +382,8 @@ const estFor = m => {
 function buildEstCells(ctx) {
   const rng = ctx.rng, D = estDesign(rng), est = estFor(D.m);
   ctx.setPrompt('Rows are participants, columns items, dots answers. Tick every term this design <b>can estimate</b>.');
-  const cell = Math.floor(Math.min(46, (stagePad(ctx.stage) - 40 - 4 * (D.I - 1)) / D.I));
-  const g = DesignGrid({ rows: Array.from({ length: D.P }, (_, i) => 'P' + (i + 1)), cols: Array.from({ length: D.I }, (_, i) => 'I' + (i + 1)), dots: (r, c) => D.m[r][c], cell, cellH: 30, rowW: 36, caption: 'Participant by item design' });
+  const cell = Math.floor(Math.min(64, (stagePad(ctx.stage) - 40 - 4 * (D.I - 1)) / D.I));
+  const g = DesignGrid({ rows: Array.from({ length: D.P }, (_, i) => 'P' + (i + 1)), cols: Array.from({ length: D.I }, (_, i) => 'I' + (i + 1)), dots: (r, c) => D.m[r][c], cell, cellH: 42, rowW: 36, caption: 'Participant by item design' });
   const chips = ChipSet([{ key: 'p', label: '(1 | subj)' }, { key: 'i', label: '(1 | item)' }, { key: 'pi', label: '(1 | subj:item)' }], { cols: 1, label: 'Terms', onChange: () => ctx.setReady(true) });
   chips.el.classList.add('monochips');
   ctx.stage.append(g.el, chips.el);
@@ -395,7 +398,7 @@ function buildEstSlope(ctx) {
   const rng = ctx.rng, kind = U.pick(rng, ['within2', 'within3', 'within1', 'between']), P = 4;
   const counts = Array.from({ length: P }, (_, p) => kind === 'between' ? [p % 2 === 0 ? 3 : 0, p % 2 === 0 ? 0 : 3] : (n => [n, n])(kind === 'within1' ? 1 : kind === 'within2' ? 2 : 3));
   ctx.setPrompt('Rows are participants, columns are the two levels of <b>condition</b>. Tick every term this design <b>can estimate</b>.');
-  const g = DesignGrid({ rows: ['P1', 'P2', 'P3', 'P4'], cols: ['cond A', 'cond B'], dots: (r, c) => counts[r][c], cell: 70, cellH: 38, rowW: 40, caption: 'Participant by condition design' });
+  const g = DesignGrid({ rows: ['P1', 'P2', 'P3', 'P4'], cols: ['cond A', 'cond B'], dots: (r, c) => counts[r][c], cell: 84, cellH: 44, rowW: 40, caption: 'Participant by condition design' });
   const chips = ChipSet([{ key: 'int', label: '(1 | subj)' }, { key: 'slope', label: '(1 + cond | subj)' }], { cols: 1, label: 'Terms', onChange: () => ctx.setReady(true) });
   chips.el.classList.add('monochips');
   ctx.stage.append(g.el, chips.el);
@@ -428,7 +431,7 @@ function buildSlopeShape(ctx) {
   const rng = ctx.rng, kind = U.pick(rng, ['int', 'slope', 'both']), n = 5, b = 0.8;
   const lines = Array.from({ length: n }, (_, i) => { const z = i - 2; return kind === 'int' ? { a: 6 + z * 1.3, s: b } : kind === 'slope' ? { a: 6, s: b + z * 0.4 } : { a: 6 + [1.4, -1.3, 0.6, -0.5, 1.6][i], s: b + [-0.7, 0.5, -0.2, 0.8, 0][i] }; });
   ctx.setPrompt('Each thin line is one person. <b>What varies from person to person?</b> Tap the matching random term.');
-  const lo = 2, hi = 15, ch = Plot(ctx, { h: roomH(ctx, 3 * 54 + 8, 140, 230), left: 36, right: 14, top: 8, bottom: 30, xr: [0, 5], yr: [lo, hi], label: `Five people's lines against x: ${{ int: 'parallel, different heights', slope: 'all start at the same height, different slopes', both: 'different heights and different slopes' }[kind]}` });
+  const lo = 2, hi = 15, ch = Plot(ctx, { h: roomH(ctx, 3 * 54 + 4, 150, 260), left: 36, right: 14, top: 8, bottom: 30, xr: [0, 5], yr: [lo, hi], label: `Five people's lines against x: ${{ int: 'parallel, different heights', slope: 'all start at the same height, different slopes', both: 'different heights and different slopes' }[kind]}` });
   ch.axisY([[4, '4'], [8, '8'], [12, '12']]); ch.axisX([[0, '0'], [2, '2'], [4, '4']]);
   lines.forEach((l, i) => ch.add(sv('line', { class: 'ownln', stroke: 'var(--ink2)', x1: ch.X(0), y1: ch.Y(l.a), x2: ch.X(5), y2: ch.Y(l.a + l.s * 5) })));
   ch.line(0, 6, 5, 6 + b * 5, 'groupln');
@@ -441,20 +444,20 @@ function buildSlopeShape(ctx) {
   };
 }
 function buildSlopeCost(ctx) {
-  const rng = ctx.rng, wantKind = rng() < 0.5 ? 'wider' : 'same', C = poolPick(rng, POOLS.cost.filter(c => c.kind === wantKind)), A = { name: '(1 | id)', se: C.se1 }, B = { name: '(1 + cond | id)', se: C.se2 };
+  const rng = ctx.rng, wantKind = rng() < 0.5 ? 'wider' : 'same', C = poolPick(rng, POOLS.cost.filter(c => c.kind === wantKind)), A = { name: '(1 | subj)', se: C.se1 }, B = { name: '(1 + cond | subj)', se: C.se2 };
   const rowsOrder = rng() < 0.5 ? [A, B] : [B, A];
   ctx.setPrompt('Same data, two models. Each bar is the condition effect ± 2 standard errors. <b>Which would you trust</b>?');
   const mse = Math.max(C.se1, C.se2), lo = Math.floor(Math.min(0, C.eff - 2 * mse) - 0.5), hi = Math.ceil(C.eff + 2 * mse + 0.5);
   const ch = Plot(ctx, { h: 150, left: 14, right: 14, top: 4, bottom: 30, xr: [lo, hi], yr: [0, 1], label: `Two intervals for the same effect: ${A.name} gives ${f1(C.eff - 2 * A.se)} to ${f1(C.eff + 2 * A.se)}, ${B.name} gives ${f1(C.eff - 2 * B.se)} to ${f1(C.eff + 2 * B.se)}` });
   ch.axisX(gridTicks(lo, hi, hi - lo > 12 ? 4 : hi - lo > 6 ? 2 : 1), { y: 120 });
   ch.pline(ch.X(0), 6, ch.X(0), 120, 'zero');
-  rowsOrder.forEach((r, i) => { const y = 24 + i * 52; ch.text(ch.left, y - 6, r.name, 'tx mono', 'start'); ch.pline(ch.X(C.eff - 2 * r.se), y + 12, ch.X(C.eff + 2 * r.se), y + 12, 'ci'); ch.pline(ch.X(C.eff - 2 * r.se), y + 3, ch.X(C.eff - 2 * r.se), y + 21, 'ci'); ch.pline(ch.X(C.eff + 2 * r.se), y + 3, ch.X(C.eff + 2 * r.se), y + 21, 'ci'); ch.add(sv('circle', { class: 'fixm', r: 7, cx: ch.X(C.eff), cy: y + 12 })); });
+  rowsOrder.forEach((r, i) => { const y = 24 + i * 52; ch.text(ch.left, y - 6, r.name, 'tx mono halo', 'start'); ch.pline(ch.X(C.eff - 2 * r.se), y + 12, ch.X(C.eff + 2 * r.se), y + 12, 'ci'); ch.pline(ch.X(C.eff - 2 * r.se), y + 3, ch.X(C.eff - 2 * r.se), y + 21, 'ci'); ch.pline(ch.X(C.eff + 2 * r.se), y + 3, ch.X(C.eff + 2 * r.se), y + 21, 'ci'); ch.add(sv('circle', { class: 'fixm', r: 7, cx: ch.X(C.eff), cy: y + 12 })); });
   const tiles = Choices([{ key: '0', label: 'Top bar' }, { key: '1', label: 'Bottom bar' }, { key: 'same', label: 'Same' }], { cols: 3, onPick: () => ctx.setReady(true) });
   ctx.stage.append(ch.svg, tiles.el, note('The vertical dashed line is 0: no effect.'));
   const ans = C.kind === 'same' ? 'same' : String(rowsOrder.indexOf(B));
   return {
     check() { const ok = tiles.key === ans; tiles.lock(); tiles.mark(ans, 'right'); if (!ok) tiles.mark(tiles.key, 'wrongc');
-      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + (C.kind === 'same' ? 'Here people hardly differ in their effect, so the two models agree. A slope you do not need costs little.' : 'People differ in their effect of condition, and only the model with the random slope knows it. Without it the bar is too short and p-values look better than they should. Costly for this claim.') }; },
+      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + (C.kind === 'same' ? 'Here people hardly differ in their effect, so the two models agree. A slope you do not need costs little.' : 'People differ in their effect, which only the random-slope model knows. Without it the bar is too short and p looks too good.') }; },
     solve() { tiles.pick(ans, true); }, solveWrong() { tiles.pick(ans === '0' ? '1' : '0', true); }, info: { kind: C.kind, ans, ratio: C.se2 / C.se1 },
   };
 }
@@ -464,7 +467,7 @@ function buildSlopeCost(ctx) {
 // ---------------------------------------------------------------------------
 function reTable(entry, { onTap = () => {}, mode = 'cell', flash = null, tappable = (ri, ci) => ci >= 1, caption = 'Random effects' } = {}) {
   const rows = [], hasCorr = entry.re.length > 1;
-  entry.re.forEach((r, i) => rows.push({ name: i === 0 ? r.grp : '', aria: `${r.grp} ${r.name}`, cells: [r.name, f2(r.sd), ...(hasCorr ? [i === 1 && r.corr != null ? (typeof r.corr === 'string' ? r.corr : f2(r.corr)) : ''] : [])] }));
+  entry.re.forEach((r, i) => rows.push({ name: i === 0 ? gname(r.grp) : '', aria: `${gname(r.grp)} ${r.name}`, cells: [r.name, f2(r.sd), ...(hasCorr ? [i === 1 && r.corr != null ? (typeof r.corr === 'string' ? r.corr : f2(r.corr)) : ''] : [])] }));
   if (entry.resid != null) rows.push({ name: 'Residual', cells: ['', f2(entry.resid), ...(hasCorr ? [''] : [])] });
   const cols = [{ label: 'Name' }, { label: 'SD', aria: 'Standard deviation' }, ...(hasCorr ? [{ label: 'Corr', aria: 'Correlation' }] : [])];
   return ModelTable({ cols, rows, mode, flash, can: tappable, onTap, caption, widths: hasCorr ? [24, 30, 20, 26] : [26, 38, 36] });
@@ -502,12 +505,12 @@ function buildEmpty(ctx) {
   const pos = i => ({ r: i >> 2, c: ((i >> 1) & 1) * 2 + (i & 1) });
   const cnt = Array.from({ length: 2 }, () => Array(4).fill(0)); all.forEach(i => { const { r, c } = pos(i); cnt[r][c] = empties.includes(i) ? 0 : U.int(rng, 4, 9); });
   ctx.setPrompt(`Counts of answers in each A × B × C cell. Tap the ${nEmpty > 1 ? '<b>empty cells</b>' : '<b>empty cell</b>'}.`);
-  const g = DesignGrid({ rows: ['A1', 'A2'], cols: ['B1', 'B2', 'B1', 'B2'], colGroups: [{ label: 'C1', span: 2 }, { label: 'C2', span: 2 }], label: (r, c) => String(cnt[r][c]), dots: (r, c) => cnt[r][c], tap: true, caption: 'Counts per cell', onTap: () => ctx.setReady(g.filled().length > 0), cell: 56 });
+  const g = DesignGrid({ rows: ['A1', 'A2'], cols: ['B1', 'B2', 'B1', 'B2'], colGroups: [{ label: 'C1', span: 2 }, { label: 'C2', span: 2 }], label: (r, c) => String(cnt[r][c]), dots: (r, c) => cnt[r][c], tap: true, caption: 'Counts per cell', onTap: () => ctx.setReady(g.filled().length > 0), cell: 56, cellH: 52 });
   ctx.stage.append(g.el);
   const want = empties.map(i => { const { r, c } = pos(i); return r + ':' + c; });
   return {
     check() { const got = g.filled(), ok = got.length === want.length && want.every(k => got.includes(k)); g.lock(); want.forEach(k => { const [r, c] = k.split(':').map(Number); g.mark(r, c, 'right'); }); got.filter(k => !want.includes(k)).forEach(k => { const [r, c] = k.split(':').map(Number); g.mark(r, c, 'wrongc'); });
-      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `With an empty cell, a model with every interaction has nothing to estimate for it: R reports "NA" for ${nEmpty} coefficient${nEmpty > 1 ? 's' : ''} (rank deficient). Look at the counts before adding terms.` }; },
+      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `An empty cell leaves nothing to estimate: R reports "NA" for ${nEmpty} coefficient${nEmpty > 1 ? 's' : ''} (rank deficient). Check counts before adding terms.` }; },
     solve() { want.forEach(k => { const [r, c] = k.split(':').map(Number); if (!g.state[k]) g.toggle(r, c, true); }); },
     solveWrong() { const k = '0:0'; const w = want.includes(k) ? '1:1' : k; const [r, c] = w.split(':').map(Number); g.toggle(r, c, true); },
     info: { empties, cnt, nEmpty },
@@ -517,7 +520,7 @@ const SCENARIOS = [
   { msg: 'number of levels of each grouping factor must be < number of observations (problems: p:i)', best: 'Count answers in each cell', others: ['Add more random slopes', 'Ignore it: the fixed effects are fine'], why: 'One answer per participant \u00d7 item: that term cannot be told from noise. Inspect the design before adding terms.' },
   { msg: 'boundary (singular) fit: see help(\'isSingular\')', best: 'Drop the slope or the correlation', others: ['Add more random slopes', 'Ignore it: it only looks scary'], why: 'A singular fit says the random structure is richer than the data can support. Simplify, or check that the design can estimate it.' },
   { msg: 'fixed-effect model matrix is rank deficient so dropping 1 column / coefficient', best: 'Look for an empty cell', others: ['Raise the iteration limit', 'Change the optimiser, then refit'], why: 'A dropped column means two fixed terms say the same thing, usually because a cell is empty. Random terms do not fix that.' },
-  { msg: 'number of observations (=24) <= number of random effects (=24) for term (1 + cond | id)', best: 'Check repeats per person and cond', others: ['Increase the iteration limit', 'Add a second random slope for cond'], why: 'One answer per person per condition: a person\'s effect cannot be told from noise. A design problem, not an optimiser one.' },
+  { msg: 'number of observations (=24) <= number of random effects (=24) for term (1 + cond | subj)', best: 'Check repeats per person and cond', others: ['Increase the iteration limit', 'Add a second random slope for cond'], why: 'One answer per person per condition: a person\'s effect cannot be told from noise. A design problem, not an optimiser one.' },
 ];
 function buildWhat(ctx) {
   const rng = ctx.rng, S = U.pick(rng, SCENARIOS), opts = U.shuffle(rng, [S.best, ...S.others]);
@@ -535,9 +538,9 @@ function buildWhat(ctx) {
 // ---------------------------------------------------------------------------
 function printoutTables(E, { onTap, flash = null, only = null } = {}) {
   const glm = E.kind === 'glmer', cols = glm ? [{ label: 'Est.', aria: 'Estimate' }, { label: 'SE', aria: 'Standard error' }, { label: 'z', aria: 'z value' }] : [{ label: 'Est.', aria: 'Estimate' }, { label: 'SE', aria: 'Standard error' }, { label: 't', aria: 't value' }];
-  const re = ModelTable({ cols: [{ label: 'SD', aria: 'Standard deviation' }], rows: [{ name: E.re[0].grp, aria: 'participant intercept', cells: [f2(E.re[0].sd)] }, ...(E.resid != null ? [{ name: 'Residual', cells: [f2(E.resid)] }] : [])], mode: 'cell', caption: 'Random effects', onTap: (r, c) => onTap('re', r, c), flash: flash && flash[0] === 're' ? [flash[1], flash[2]] : null, can: (r, c) => !only || (only[0] === 're' && only[1] === r && only[2] === c) });
+  const re = ModelTable({ cols: [{ label: 'SD', aria: 'Standard deviation' }], rows: [{ name: gname(E.re[0].grp), aria: 'participant intercept', cells: [f2(E.re[0].sd)] }, ...(E.resid != null ? [{ name: 'Residual', cells: [f2(E.resid)] }] : [])], mode: 'cell', caption: 'Random effects', onTap: (r, c) => onTap('re', r, c), flash: flash && flash[0] === 're' ? [flash[1], flash[2]] : null, can: (r, c) => !only || (only[0] === 're' && only[1] === r && only[2] === c) });
   const fe = ModelTable({ cols, rows: E.fe.map(f => ({ name: f.name, cells: [f2(f.est), f2(f.se), f2(f.stat)] })), mode: 'cell', caption: 'Fixed effects', onTap: (r, c) => onTap('fe', r, c), flash: flash && flash[0] === 'fe' ? [flash[1], flash[2]] : null, can: (r, c) => !only || (only[0] === 'fe' && only[1] === r && only[2] === c) });
-  const obs = el('button', { class: 'obsline', 'aria-label': `Number of observations ${E.n}, groups participant, ${E.ngroups}`, onclick: () => onTap('obs', 0, 0) }, `Obs: ${E.n}, `, el('span', { class: 'ng' }, `${E.re[0].grp}: ${E.ngroups}`));
+  const obs = el('button', { class: 'obsline', 'aria-label': `Number of observations ${E.n}, groups participant, ${E.ngroups}`, onclick: () => onTap('obs', 0, 0) }, `Obs: ${E.n}, `, el('span', { class: 'ng' }, `${gname(E.re[0].grp)}: ${E.ngroups}`));
   if (only) obs.disabled = !(only[0] === 'obs');
   const wrap = el('div', { class: 'printout' }, el('div', { class: 'ptitle' }, 'Random effects'), re.el, el('div', { class: 'ptitle' }, 'Fixed effects'), fe.el, obs);
   return { el: wrap, re, fe, obs };
@@ -575,23 +578,23 @@ function buildOutTap(ctx) {
 // the typical person vs the average of people
 function typicalCase(rng) {
   for (;;) {
-    const mu = M.round(U.pick(rng, [-1, 1]) * U.uni(rng, 1.2, 2.4), 1), sd = M.round(U.uni(rng, 1.2, 2.2), 1), n = 15;
+    const mu = M.round(U.pick(rng, [-1, 1]) * U.uni(rng, 1.2, 2.4), 1), sd = M.round(U.uni(rng, 1.2, 2.2), 1), n = 9;
     const z = Array.from({ length: n }, (_, i) => U.qnorm((i + 0.5) / n)), ps = z.map(v => U.plogis(mu + sd * v)), med = U.plogis(mu), mean = U.mean(ps);
     if (Math.abs(mean - med) >= 0.07 && Math.abs(med - 0.5) >= 0.12 && Math.abs(mean - 0.5) >= 0.05) return { mu, sd, ps, med, mean };
   }
 }
 function buildTypical(ctx) {
   const rng = ctx.rng, C = typicalCase(rng);
-  ctx.setPrompt(`Fifteen people's own probabilities (dots). The model says Intercept = <b>${f1(C.mu)}</b> log-odds. Drag the marker to <b>plogis(Intercept)</b>.`);
-  const ch = Plot(ctx, { h: 154, left: 14, right: 14, top: 4, bottom: 30, xr: [0, 1], yr: [0, 1], label: `Fifteen people's probabilities on a 0 to 1 line, from ${prob(Math.min(...C.ps))} to ${prob(Math.max(...C.ps))}` });
-  ch.axisX([[0, '0'], [0.5, '.5'], [1, '1']], { y: 84 });
-  const bins = {}; C.ps.forEach(p => { const k = Math.round(ch.X(p) / 11); bins[k] = (bins[k] || 0) + 1; ch.add(sv('circle', { class: 'datadot', r: 5.2, cx: ch.X(p), cy: 72 - (bins[k] - 1) * 11 }), ch.over); });
+  ctx.setPrompt(`Nine people's own probabilities (dots). The model says Intercept = <b>${f1(C.mu)}</b> log-odds. Drag the marker to <b>plogis(Intercept)</b>.`);
+  const ch = Plot(ctx, { h: 200, left: 14, right: 14, top: 4, bottom: 30, xr: [0, 1], yr: [0, 1], label: `Nine people's probabilities on a 0 to 1 line, from ${prob(Math.min(...C.ps))} to ${prob(Math.max(...C.ps))}` });
+  ch.axisX([[0, '0'], [0.5, '.5'], [1, '1']], { y: 120 });
+  const placed = []; C.ps.slice().sort((x, y) => x - y).forEach(p => { const px = ch.X(p), k = placed.filter(q => Math.abs(q - px) < 17).length; placed.push(px); ch.add(sv('circle', { class: 'datadot', r: 8, cx: px, cy: 106 - k * 17 }), ch.over); });
   const start = C.mu > 0 ? 0.3 : 0.7;
-  const h = hx(ch, 134, { name: 'Marker for plogis(Intercept)', v: start, min: 0.02, max: 0.98, step: 0.01, fmt: v => `probability ${f2(v)}`, onChange: (v, u) => { if (u) ctx.setReady(true); } });
+  const h = hx(ch, 170, { name: 'Marker for plogis(Intercept)', v: start, min: 0.02, max: 0.98, step: 0.01, fmt: v => `probability ${f2(v)}`, onChange: (v, u) => { if (u) ctx.setReady(true); } });
   ctx.stage.append(ch.svg, note(`People differ (SD ${f1(C.sd)} on the log-odds scale).`));
   const tol = 0.04;
   return {
-    check() { const ok = Math.abs(h.v - C.med) <= tol; h.lock(); ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(C.med), cy: 134 }), ch.over); const g = ch.add(marker('dia', 8, 'mkhollow'), ch.over); g.setAttribute('transform', `translate(${ch.X(C.mean)},134)`);
+    check() { const ok = Math.abs(h.v - C.med) <= tol; h.lock(); ch.add(sv('circle', { class: 'ringm good', r: 15, cx: ch.X(C.med), cy: 170 }), ch.over); const g = ch.add(marker('dia', 8, 'mkhollow'), ch.over); g.setAttribute('transform', `translate(${ch.X(C.mean)},170)`);
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `plogis(${f1(C.mu)}) = ${prob(C.med)} is the typical (middle) person. The average of everyone's probabilities is ${prob(C.mean)} (hollow diamond), pulled toward .5.` }; },
     solve() { h.set(C.med, true); }, solveWrong() { h.set(M.clamp(C.mean, 0.02, 0.98), true); }, info: { med: C.med, mean: C.mean, tol, start, mu: C.mu, sd: C.sd, ps: C.ps },
   };

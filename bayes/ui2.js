@@ -84,6 +84,23 @@ function Plot({ W = 300, H = 170, xd = [0, 1], yd = [0, 1], L = 46, R = 10, T = 
   api.draw();
   return api;
 }
+// a short caption above a picture, in real text (never drawn over bars)
+const Cap = (t, cls = '') => el('div', { class: 'cap ' + cls }, t);
+// the two ends of a slider, so the direction is plain: Ends('none', 'complete')
+const Ends = (a, b) => el('div', { class: 'ends', 'aria-hidden': 'true' }, el('span', {}, a), el('span', {}, b));
+// a key for a picture: Legend([['dash', 'average of all trees'], ['ring', 'its own average']])
+function Legend(items) {
+  const sw = { dash: '<line x1="13" y1="1" x2="13" y2="19" stroke="#2b2620" stroke-width="2" stroke-dasharray="4 3"/>', band: '<rect x="3" y="1" width="20" height="18" fill="rgba(46,125,79,.3)"/>', ring: '<circle cx="13" cy="10" r="7" fill="none" stroke="#34306b" stroke-width="3"/>', dot: '<circle cx="13" cy="10" r="7" fill="#2e7d4f" stroke="#14502d" stroke-width="1.5"/>', obs: '<circle cx="13" cy="10" r="4.6" fill="#6a645b"/>' };
+  return el('div', { class: 'legend2', 'aria-hidden': 'true' }, ...items.map(([k, t]) => el('span', { class: 'lg' }, el('span', { html: `<svg viewBox="0 0 26 20" width="26" height="20">${sw[k]}</svg>` }), t)));
+}
+// make a whole picture drag a slider that lines up with its axis (10..290 of 300)
+function dragOnStrip(root, slider, onUser) {
+  let down = false; const at = e => { const r = root.getBoundingClientRect(); return ((e.clientX - r.left) / r.width * 300 - 10) / 280; };
+  root.style.touchAction = 'none'; root.style.cursor = 'ew-resize';
+  root.addEventListener('pointerdown', e => { if (slider.el.classList.contains('locked')) return; down = true; root.setPointerCapture(e.pointerId); slider.set(0, at(e), true); });
+  root.addEventListener('pointermove', e => { if (down && !slider.el.classList.contains('locked')) slider.set(0, at(e), true); });
+  const end = () => { down = false; }; root.addEventListener('pointerup', end); root.addEventListener('pointercancel', end);
+}
 // svg string helpers for data layers
 const S = {
   dot: (x, y, r = 5, cls = 'pdot') => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" class="${cls}"/>`,
@@ -194,7 +211,7 @@ function ParamTable({ cols, rows, mode = 'cell', onPick = () => {}, label = 'Mod
 // the ring is their average, the filled dot is where the model puts the group
 // after pooling, the dashed line is the all-groups average.
 // ---------------------------------------------------------------------------
-function ShrinkStrip({ m, obs = [], mu, pooled = null, axis = [0, 40], H = 44, tau = null, label = '', showMean = true, r = 8 }) {
+function ShrinkStrip({ m, obs = [], mu, pooled = null, axis = [0, 40], H = 44, tau = null, label = '', showMean = true, r = 8, rObs = 4.6 }) {
   const W = 300, sx = x => 10 + (x - axis[0]) / (axis[1] - axis[0]) * 280, mid = H / 2;
   const root = el('div', { class: 'shrinkstrip', role: 'img', 'aria-label': label });
   const api = {
@@ -203,9 +220,9 @@ function ShrinkStrip({ m, obs = [], mu, pooled = null, axis = [0, 40], H = 44, t
       let s = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
       if (tau != null) s += `<rect x="${sx(mu - tau)}" y="2" width="${sx(mu + tau) - sx(mu - tau)}" height="${H - 4}" class="ss-band"/>`;
       s += `<line x1="${sx(mu)}" x2="${sx(mu)}" y1="0" y2="${H}" class="ss-mu"/>`;
-      obs.forEach((o, i) => { s += `<circle cx="${sx(o).toFixed(1)}" cy="${(mid + (i % 2 ? H * 0.16 : -H * 0.16)).toFixed(1)}" r="3.4" class="ss-obs"/>`; });
+      obs.forEach((o, i) => { s += `<circle cx="${sx(o).toFixed(1)}" cy="${(mid + (i % 2 ? H * 0.16 : -H * 0.16)).toFixed(1)}" r="${rObs}" class="ss-obs"/>`; });
       if (p != null && Math.abs(sx(p) - sx(m)) > 1) s += `<line x1="${sx(m)}" x2="${sx(p)}" y1="${mid}" y2="${mid}" class="ss-link"/>`;
-      if (showMean) s += `<circle cx="${sx(m).toFixed(1)}" cy="${mid}" r="${r}" class="ss-ring"/>`;
+      if (showMean) s += `<circle cx="${sx(m).toFixed(1)}" cy="${mid}" r="${r + 3}" class="ss-ring"/>`;
       if (p != null) s += `<circle cx="${sx(p).toFixed(1)}" cy="${mid}" r="${r}" class="ss-pool"/>`;
       root.innerHTML = s + '</svg>';
     },

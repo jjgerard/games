@@ -14,15 +14,15 @@ const countIcons = (k, n, size = 20) => { const t = Tray(); t.el.classList.add('
 // ---------------------------------------------------------------------------
 function buildChop(ctx) {
   const a = 5, b = 3, curve = x => betaAt(x, a, b);
-  ctx.setPrompt('A belief curve can be chopped into bars, one for each candidate share. Tap the flashing button to chop finer.');
-  const mk = m => BarStrip({ m, values: Array.from({ length: m }, (_, i) => betaAt(i / (m - 1), a, b)), curve, H: 118, ticks: true, label: `Belief about the share of circles, chopped into ${m} bars that follow a smooth curve` });
+  ctx.setPrompt('A belief can be a smooth curve, or bars with one bar per candidate share. Tap the flashing button to chop it into more bars.');
+  const mk = m => BarStrip({ m, values: Array.from({ length: m }, (_, i) => betaAt(i / (m - 1), a, b)), curve, H: 150, ticks: true, label: `Belief about the share of circles, chopped into ${m} bars that follow a smooth curve` });
   let strip = mk(5);
   const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center' }, 'Chop finer');
   const note = el('div', { class: 'stage-note' }, '5 bars');
   ctx.stage.append(strip.el, note, btn);
   btn.addEventListener('click', () => {
     btn.disabled = true; btn.classList.remove('flash'); const s2 = mk(21); strip.el.replaceWith(s2.el); strip = s2; note.textContent = '21 bars';
-    ctx.complete('21 bars follow the curve closely. Working with a row of candidate values instead of a smooth curve is called grid approximation.');
+    ctx.complete('21 bars follow the curve closely. Bars on a row of candidate values are called a grid approximation.');
   });
   return { solve: () => btn.click() };
 }
@@ -46,18 +46,19 @@ function peakCase(rng) {
 }
 function buildPeak(ctx) {
   const c = peakCase(ctx.rng);
-  ctx.setPrompt(`${c.k} circle${c.k === 1 ? '' : 's'} in ${c.n} draws. Each posterior bar is the prior bar times the likelihood bar above it. Drag the marker to the tallest posterior bar.`);
-  const pr = BarStrip({ values: c.prior, H: 60, caption: 'Prior', label: `Prior bars over shares 0 to 100 percent, tallest at ${c.i0 * 10} percent` });
-  const lk = BarStrip({ values: c.lik, H: 60, cls: 'lik', caption: 'Likelihood', label: `Likelihood bars, tallest at ${c.il * 10} percent` });
-  const po = BarStrip({ values: GRID.map(() => 0.03), H: 50, cls: 'post', caption: 'Posterior ?', ticks: true, mark: 0.5, label: 'Posterior bars, hidden until you check' });
+  ctx.setPrompt('After the draws above, posterior = prior × likelihood, bar by bar. Drag the marker to the tallest posterior bar.');
+  const seen = countIcons(c.k, c.n, 20); seen.el.setAttribute('role', 'img'); seen.el.setAttribute('aria-label', `The draws: ${c.k} circle${c.k === 1 ? '' : 's'} in ${c.n}`);
+  const pr = BarStrip({ values: c.prior, H: 42, label: `Prior bars over shares 0 to 100 percent, tallest at ${c.i0 * 10} percent` });
+  const lk = BarStrip({ values: c.lik, H: 42, cls: 'lik', label: `Likelihood bars, tallest at ${c.il * 10} percent` });
+  const po = BarStrip({ values: GRID.map(() => 0), H: 42, cls: 'post', ticks: true, mark: 0.5, label: 'Posterior bars, hidden until you check' });
   const slider = AxisSlider({ values: [0.5], labels: ['Tallest posterior bar, share of circles'], step: 0.1, onChange: v => { po.set(po.values, { mark: v[0] }); ctx.setReady(slider.touched()); } });
-  ctx.stage.append(pr.el, lk.el, po.el, slider.el);
+  ctx.stage.append(seen.el, Cap('Prior'), pr.el, Cap('Likelihood'), lk.el, Cap('Posterior: where is it tallest?'), po.el, slider.el);
   return {
     check() {
       const v = slider.get()[0], ok = Math.abs(v - c.ip / 10) <= 0.06 + 1e-9; slider.lock();
       po.set(c.post, { hi: c.ip, mark: c.ip / 10 });
       const why = ok ? '' : Math.abs(v - c.i0 / 10) < 0.06 ? ' That is just the prior’s peak.' : Math.abs(v - c.il / 10) < 0.06 ? ' That is just the likelihood’s peak.' : '';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}The tallest posterior bar is at ${c.ip * 10}%: multiply each pair of bars, then rescale so they add up to 1. Neither peak above wins alone.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}It is tallest at ${c.ip * 10}%: multiply each pair of bars, then rescale. Neither peak wins alone.` };
     },
     solve() { slider.set(0, c.ip / 10, true); },
     solveWrong() { slider.set(0, c.ip >= 5 ? 0.1 : 0.9, true); },
@@ -70,15 +71,15 @@ function buildPeak(ctx) {
 // ---------------------------------------------------------------------------
 function buildSampleTut(ctx) {
   const a = 8, b = 4, m = 21;
-  ctx.setPrompt('Samples are picks from the bars, taller bars picked more often. Tap the flashing button to take 150 samples.');
-  const bars = BarStrip({ m, values: Array.from({ length: m }, (_, i) => betaAt(i / (m - 1), a, b)), H: 84, label: 'Posterior bars: the share of circles is probably between 45 and 85 percent' });
-  const pile = Pile({ bins: 21, samples: [], H: 84, label: 'Pile of samples, empty so far' });
+  ctx.setPrompt('Samples are random picks from the bars: taller bars are picked more often. Tap the flashing button to take 150 samples.');
+  const bars = BarStrip({ m, values: Array.from({ length: m }, (_, i) => betaAt(i / (m - 1), a, b)), H: 96, label: 'Posterior bars: the share of circles is probably between 45 and 85 percent' });
+  const pile = Pile({ bins: 21, samples: [], H: 96, label: 'Pile of samples, empty so far' });
   const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center' }, 'Take 150 samples');
-  ctx.stage.append(bars.el, pile.el, btn);
+  ctx.stage.append(Cap('Belief as bars'), bars.el, Cap('Samples picked from it'), pile.el, btn);
   btn.addEventListener('click', () => {
     btn.disabled = true; btn.classList.remove('flash'); const draw = BM.betaSampler(a, b), sm = Array.from({ length: 150 }, () => draw(ctx.rng));
     pile.set(sm); pile.el.setAttribute('aria-label', 'Pile of 150 samples, the same shape as the bars: most between 50 and 85 percent');
-    ctx.complete('The pile of samples has the same shape as the bars. Any question about the posterior can now be answered by counting samples.');
+    ctx.complete('The pile has the same shape as the bars. Any question about the belief can now be answered by counting samples.');
   });
   return { solve: () => btn.click() };
 }
@@ -98,15 +99,15 @@ function countCase(rng) {
 }
 function buildCount(ctx) {
   const c = countCase(ctx.rng), draw = BM.betaSampler(c.a, c.b), sm = Array.from({ length: 300 }, () => draw(ctx.rng));
-  ctx.setPrompt('The pile is 300 samples of the share of circles. Slide the divider so the bar splits the same way as the pile does at the line.');
-  const pile = Pile({ bins: 25, samples: sm, cut: c.cut, label: `Pile of 300 samples, split by a line at ${pct(c.cut)} percent` });
+  ctx.setPrompt('The pile is 300 samples. What share of them is left of the black line? Slide the divider to that share.');
+  const pile = Pile({ bins: 25, samples: sm, cut: c.cut, H: 132, label: `Pile of 300 samples, split by a line at ${pct(c.cut)} percent` });
   const bar = ShareBar({ value: 0.5, leftClass: 'bar-acc', rightClass: 'bar-or', leftText: 'left', rightText: 'right', label: 'Share of samples left of the line' });
   ctx.stage.append(pile.el, bar.el);
   bar.el.addEventListener('pointerup', () => ctx.setReady(bar.touched())); bar.el.addEventListener('keyup', () => ctx.setReady(bar.touched()));
   return {
     check() {
       const v = bar.get(), ok = Math.abs(v - c.left) <= 0.1 + 1e-9; bar.lock(); bar.ghost(c.left);
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}About ${pct(c.left)}% of the samples are left of the line, ${100 - pct(c.left)}% right. Counting samples answers "how likely is the share to be above ${pct(c.cut)}%?"` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}About ${pct(c.left)}% are left of the line, so the share is above ${pct(c.cut)}% about ${100 - pct(c.left)}% of the time. Counting answers it.` };
     },
     solve() { bar.set(c.left, true); ctx.setReady(true); },
     solveWrong() { bar.set(c.left < 0.5 ? c.left + 0.4 : c.left - 0.4, true); ctx.setReady(true); },
@@ -119,15 +120,15 @@ function buildCount(ctx) {
 // ---------------------------------------------------------------------------
 function buildTwoSteps(ctx) {
   const a = 7, b = 4, rng = ctx.rng;
-  ctx.setPrompt('To simulate data from a belief, first pick a share from it, then draw shapes from a bag with that share. Tap the flashing button.');
-  const cv = CurveView({ a, b, height: 104 });
+  ctx.setPrompt('To simulate: pick a share from the belief curve, then draw ten shapes from a bag with that share. Tap the flashing button.');
+  const cv = CurveView({ a, b, height: 130 });
   const tray = Tray(); tray.el.classList.add('wrap');
   const note = el('div', { class: 'stage-note' }, 'Step 1: pick a share');
   const b1 = el('button', { class: 'bigbtn flash' }, '1. Pick a share'), b2 = el('button', { class: 'bigbtn', disabled: true }, '2. Draw 10');
   ctx.stage.append(cv.el, note, el('div', { class: 'btnrow' }, b1, b2), tray.el);
   let theta = 0;
   b1.addEventListener('click', () => { theta = Math.round(BM.betaSampler(a, b)(rng) * 20) / 20; cv.update({ markers: [{ x: theta, cls: 'truth' }] }); b1.disabled = true; b1.classList.remove('flash'); b2.disabled = false; b2.classList.add('flash'); note.textContent = `Picked a share of ${pct(theta)}%`; });
-  b2.addEventListener('click', () => { b2.disabled = true; b2.classList.remove('flash'); let k = 0; for (let i = 0; i < 10; i++) { const s = BM.drawShape(rng, theta); if (s === 'c') k++; tray.add(s, { size: 22 }); } note.textContent = `Picked ${pct(theta)}% and drew ${k} circles in 10`; ctx.complete('That is one simulated data set. Repeat both steps many times and you have a picture of what your belief predicts.'); });
+  b2.addEventListener('click', () => { b2.disabled = true; b2.classList.remove('flash'); let k = 0; for (let i = 0; i < 10; i++) { const s = BM.drawShape(rng, theta); if (s === 'c') k++; tray.add(s, { size: 28 }); } note.textContent = `Picked ${pct(theta)}% and drew ${k} circles in 10`; ctx.complete('That is one simulated data set. Repeat both steps many times to see what the belief predicts.'); });
   return { solve() { b1.click(); b2.click(); } };
 }
 
@@ -151,9 +152,9 @@ function predictCase(rng) {
 }
 function buildPredict(ctx) {
   const c = predictCase(ctx.rng);
-  ctx.setPrompt(c.n === 0 ? 'Before any draws, this is your belief about the share of circles. Ten draws are coming: bracket the count of circles you would expect 9 times in 10.' : 'This is your belief after the draws shown. Ten more are coming: bracket the count of circles you would expect 9 times in 10.');
-  const cv = CurveView({ a: c.a, b: c.b, height: 100 });
-  const seen = c.n ? countIcons(c.k, c.n, 18) : null;
+  ctx.setPrompt(c.n === 0 ? 'This is your belief before any draws. Ten draws are coming: bracket the count of circles you expect 9 times in 10.' : 'This is your belief after the draws above. Ten more are coming: bracket the count of circles you expect 9 times in 10.');
+  const cv = CurveView({ a: c.a, b: c.b, height: 120 });
+  const seen = c.n ? countIcons(c.k, c.n, 22) : null;
   const label = el('div', { class: 'livelabel' });
   const slider = AxisSlider({ values: [0.2, 0.8], labels: ['Fewest circles', 'Most circles'], step: 0.1, minGap: 0.02, onChange: () => { snap(); } });
   const ticks = TickRow({ xd: [0, 10], ticks: [0, 2, 4, 6, 8, 10], label: 'Count of circles, 0 to 10' });
@@ -168,10 +169,10 @@ function buildPredict(ctx) {
     check() {
       const [lo, hi] = counts(), mass = BM.pmfMass(c.P, lo, hi), ok = mass >= 0.9 - 1e-9 && hi - lo <= c.hi - c.lo + 1;
       slider.lock();
-      const bars = BarStrip({ values: c.P, H: 72, ticks: true, hi: Array.from({ length: hi - lo + 1 }, (_, i) => lo + i), xticks: [0, 0.2, 0.4, 0.6, 0.8, 1], xlabels: ['0', '2', '4', '6', '8', '10'], label: `Predicted counts of circles in 10 draws; the middle 90 percent runs from ${c.lo} to ${c.hi}` });
+      const bars = BarStrip({ values: c.P, H: 96, ticks: true, hi: Array.from({ length: hi - lo + 1 }, (_, i) => lo + i), xticks: [0, 0.2, 0.4, 0.6, 0.8, 1], xlabels: ['0', '2', '4', '6', '8', '10'], label: `Predicted counts of circles in 10 draws; the middle 90 percent runs from ${c.lo} to ${c.hi}` });
       cv.el.replaceWith(bars.el); ticks.el.remove();
-      const why = ok ? '' : mass < 0.9 ? ' Too narrow: it would miss the truth more than 1 time in 10.' : ' Wider than needed.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}The middle 90% is ${c.lo} to ${c.hi} circles. Predictions are wider than the belief’s average alone suggests, because both the share and the luck of ten draws are uncertain.` };
+      const why = ok ? '' : mass < 0.9 ? ' Too narrow: it misses more than 1 time in 10.' : ' Wider than needed.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}The middle 90% is ${c.lo} to ${c.hi} circles: wide, as the share and the luck of ten draws both vary.` };
     },
     solve() { slider.set(0, c.lo / 10, true); slider.set(1, c.hi / 10, true); snap(); },
     solveWrong() { slider.set(1, c.plug[1] / 10, true); slider.set(0, c.plug[0] / 10, true); snap(); },
@@ -198,26 +199,26 @@ function buildWhich(ctx) {
     if (wd(plug) < wd(post) && wd(post) < wd(prior)) break;
   }
   const rows = BM.shuffle(rng, [{ key: 'prior', pmf: prior }, { key: 'post', pmf: post }, { key: 'plug', pmf: plug }]);
-  const ask = BM.pick(rng, ['prior', 'post']);
-  const ASK = { prior: 'the <b>prior</b> predictive: simulated before seeing any draws', post: 'the <b>posterior</b> predictive: simulated from what you believe after the draws' };
-  ctx.setPrompt(`Seen: ${n} draws. Each picture is 400 simulated runs of ten more draws. Tap the one for ${ASK[ask]}.`);
-  const seen = countIcons(k, n, 18);
+  const ask = BM.pick(rng, ['prior', 'post', 'plug']);
+  const ASK = { prior: 'the <b>prior predictive</b>: simulated before any draws.', post: 'the <b>posterior predictive</b>: simulated after the draws above.', plug: 'the one that treats the draws’ average as the exact share.' };
+  ctx.setPrompt(`Each picture is 400 simulated runs of ten more draws. Tap ${ASK[ask]}`);
+  const seen = countIcons(k, n, 22); seen.el.setAttribute('role', 'img'); seen.el.setAttribute('aria-label', `The draws seen: ${k} circles in ${n}`);
   let chosen = null; const btns = [];
   const els = rows.map((r, i) => {
     const sim = simulateCounts(rng, r.pmf), [l, h] = BM.pmfBracket(sim.map(x => x / 400));
-    const strip = BarStrip({ values: sim, H: 48, label: `Simulation ${i + 1}: counts of circles in ten draws, mostly between ${l} and ${h}` });
+    const strip = BarStrip({ values: sim, H: 56, label: `Simulation ${i + 1}: counts of circles in ten draws, mostly between ${l} and ${h}` });
     const b = el('button', { class: 'rowpick', 'aria-label': `Simulation ${i + 1}, mostly ${l} to ${h} circles`, onclick: () => { chosen = i; btns.forEach((x, j) => x.classList.toggle('on', j === i)); ctx.setReady(true); } }, el('div', { class: 'barsline' }, el('span', { class: 'rownum' }, i + 1), strip.el));
     btns.push(b); return b;
   });
   const ticks = TickRow({ xd: [0, 10], ticks: [0, 5, 10], label: 'Count of circles in ten draws, 0 to 10' });
   const tickWrap = el('div', { class: 'barsline' }, el('span', { class: 'rownum', style: 'visibility:hidden' }), ticks.el);
   ctx.stage.append(seen.el, ...els, tickWrap);
-  const answer = rows.findIndex(r => r.key === ask), NAMES = { prior: 'Prior predictive', post: 'Posterior predictive', plug: 'Best guess only' };
+  const answer = rows.findIndex(r => r.key === ask), NAMES = { prior: 'Prior predictive', post: 'Posterior predictive', plug: 'Average only (too narrow)' };
   return {
     check() {
       const ok = chosen === answer;
       btns.forEach((b, i) => { b.disabled = true; b.classList.remove('on'); if (i === answer) b.classList.add('right'); else if (i === chosen) b.classList.add('bad'); b.prepend(el('div', { class: 'rowname' }, NAMES[rows[i].key])); });
-      const how = ask === 'prior' ? 'It is the widest and centred on 50%: before any draws, nearly anything is possible.' : 'It leans toward the draws but stays wider than the best-guess picture, which ignores that the share is uncertain.';
+      const how = { prior: 'It is the widest, centred on 50%: before any draws nearly anything is possible.', post: 'It leans toward the draws but stays wider than the average-only picture.', plug: 'Trusting the average as exact ignores the uncertainty, so it is the narrowest.' }[ask];
       return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${how}` };
     },
     solve() { btns[answer].click(); },
@@ -230,21 +231,47 @@ function buildWhich(ctx) {
 // 2.7 tutorial: a grid explodes
 // ---------------------------------------------------------------------------
 function buildBlowup(ctx) {
-  ctx.setPrompt('A grid of 7 candidate values for one unknown needs 7 cells. A model has more unknowns than one. Tap the flashing button to add a second unknown.');
-  const cell = 24, gap = 3;
-  const draw = rows => { let s = `<svg viewBox="0 0 300 ${rows * (cell + gap) + 2}" aria-hidden="true">`; for (let r = 0; r < rows; r++) for (let c = 0; c < 7; c++) s += `<rect x="${60 + c * (cell + gap)}" y="${r * (cell + gap) + 2}" width="${cell}" height="${cell}" rx="3" class="bs-bar"/>`; return s + '</svg>'; };
+  ctx.setPrompt('One unknown with 7 candidate values needs 7 cells. Real models have more unknowns. Tap the flashing button to add a second one.');
+  const cell = 28, gap = 3;
+  const draw = rows => { let s = `<svg viewBox="0 0 300 ${rows * (cell + gap) + 2}" aria-hidden="true">`; for (let r = 0; r < rows; r++) for (let c = 0; c < 7; c++) s += `<rect x="${(300 - (7 * (cell + gap) - gap)) / 2 + c * (cell + gap)}" y="${r * (cell + gap) + 2}" width="${cell}" height="${cell}" rx="3" class="bs-bar"/>`; return s + '</svg>'; };
   const pic = el('div', { class: 'barstrip', role: 'img', 'aria-label': '1 unknown: a row of 7 cells', html: draw(1) });
   const note = el('div', { class: 'stage-note' }, '1 unknown: 7 cells');
   const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center' }, '+ one more unknown');
   ctx.stage.append(pic, note, btn);
   btn.addEventListener('click', () => { btn.disabled = true; btn.classList.remove('flash'); pic.innerHTML = draw(7); pic.setAttribute('aria-label', '2 unknowns: a 7 by 7 square of 49 cells'); note.textContent = '2 unknowns: 49 cells';
-    ctx.complete('Each extra unknown multiplies the cells by 7: ten unknowns would need over 280 million. Real models have dozens, so we need a smarter way to get samples.'); });
+    ctx.complete('Each extra unknown multiplies the cells by 7: ten unknowns need over 280 million. We need a smarter way to sample.'); });
   return { solve: () => btn.click() };
 }
 
 // ---------------------------------------------------------------------------
-// 2.8 MCMC: should the walker move or stay?
+// 2.8 / 2.9 MCMC: a walker on the curve that moves or stays
 // ---------------------------------------------------------------------------
+function walkerPlot(a, b, cur, prop, label) {
+  const pk = Math.max(...Array.from({ length: 100 }, (_, i) => betaAt((i + 0.5) / 100, a, b)));
+  const plot = Plot({ H: 170, xd: [0, 1], yd: [0, pk * 1.12], L: 10, R: 10, T: 10, B: 30, xticks: [0, 0.5, 1], xfmt: v => Math.round(v * 100) + '%', label });
+  const f = x => betaAt(x, a, b);
+  let d = ''; for (let i = 0; i <= 100; i++) d += `${i ? 'L' : 'M'}${plot.sx(i / 100).toFixed(1)} ${plot.sy(f(i / 100)).toFixed(1)} `;
+  plot.show = (walker, proposal = null, link = false) => plot.draw([S.path(d, 'cv-line'),
+    ...(proposal != null ? [S.line(plot.sx(proposal), plot.sy(0), plot.sx(proposal), plot.sy(f(proposal)), 'cv-mark'), S.dot(plot.sx(proposal), plot.sy(f(proposal)), 10, 'pdot hollow')] : []),
+    ...(link ? [S.line(plot.sx(cur), plot.sy(f(cur)), plot.sx(prop), plot.sy(f(prop)), 'pline dash')] : []),
+    S.line(plot.sx(walker), plot.sy(0), plot.sx(walker), plot.sy(f(walker)), 'cv-mark'), S.dot(plot.sx(walker), plot.sy(f(walker)), 10, 'pdot')]);
+  return plot;
+}
+function buildWalkTut(ctx) {
+  const a = 6, b = 3, cur = 0.35, prop = 0.6;
+  ctx.setPrompt('To sample from a curve, a walker (●) stands on it and proposes jumps. Tap the flashing button to propose a jump.');
+  const plot = walkerPlot(a, b, cur, prop, 'Belief curve with a walker at 35 percent');
+  plot.show(cur);
+  const btn = el('button', { class: 'bigbtn flash', style: 'align-self:center' }, 'Propose a jump');
+  const note = el('div', { class: 'stage-note' }, 'The walker stands at ●');
+  ctx.stage.append(plot.el, note, btn);
+  btn.addEventListener('click', () => {
+    btn.disabled = true; btn.classList.remove('flash'); plot.show(cur, prop); note.textContent = 'Proposed ○ is higher: the walker moves'; plot.setLabel('The walker at 35 percent proposes a jump to a higher spot at 60 percent');
+    setTimeout(() => { plot.show(prop, null, true); plot.setLabel('The walker moved up the curve to 60 percent'); }, 600);
+    ctx.complete('It moved, because ○ was higher. A jump to a much lower spot is usually refused.');
+  });
+  return { solve: () => btn.click() };
+}
 function moveCase(rng) {
   for (let t = 0; t < 2000; t++) {
     const a = BM.int(rng, 3, 12), b = BM.int(rng, 3, 12), kind = rng() < 0.5 ? 'up' : 'down';
@@ -258,20 +285,17 @@ function moveCase(rng) {
 }
 function buildMove(ctx) {
   const c = moveCase(ctx.rng);
-  ctx.setPrompt('A walker explores the curve to build a sample. It stands at ● and proposes a jump to ○. Which is more likely?');
-  const pk = Math.max(...Array.from({ length: 100 }, (_, i) => betaAt((i + 0.5) / 100, c.a, c.b)));
-  const plot = Plot({ H: 150, xd: [0, 1], yd: [0, pk * 1.1], L: 10, R: 10, T: 8, B: 30, xticks: [0, 0.5, 1], xfmt: v => Math.round(v * 100) + '%', label: `Belief curve with the walker at ${pct(c.cur)} percent and a proposed jump to ${pct(c.prop)} percent, which is ${c.kind === 'up' ? 'higher' : 'far lower'}` });
-  let d = ''; for (let i = 0; i <= 100; i++) d += `${i ? 'L' : 'M'}${plot.sx(i / 100).toFixed(1)} ${plot.sy(betaAt(i / 100, c.a, c.b)).toFixed(1)} `;
-  plot.draw([S.path(d, 'cv-line'), S.line(plot.sx(c.cur), plot.sy(0), plot.sx(c.cur), plot.sy(betaAt(c.cur, c.a, c.b)), 'cv-mark'), S.line(plot.sx(c.prop), plot.sy(0), plot.sx(c.prop), plot.sy(betaAt(c.prop, c.a, c.b)), 'cv-mark'),
-    S.dot(plot.sx(c.cur), plot.sy(betaAt(c.cur, c.a, c.b)), 9, 'pdot'), S.dot(plot.sx(c.prop), plot.sy(betaAt(c.prop, c.a, c.b)), 9, 'pdot hollow')]);
+  ctx.setPrompt('The walker ● proposes a jump to ○. It goes to higher spots and rarely to far lower ones. What does it do?');
+  const plot = walkerPlot(c.a, c.b, c.cur, c.prop, `Belief curve with the walker at ${pct(c.cur)} percent and a proposed jump to ${pct(c.prop)} percent, which is ${c.kind === 'up' ? 'higher' : 'far lower'}`);
+  plot.show(c.cur, c.prop);
   const pick = PickButtons([{ text: 'It moves' }, { text: 'It stays' }], () => ctx.setReady(true));
   ctx.stage.append(plot.el, pick.el);
   const answer = c.kind === 'up' ? 0 : 1; let got = null; pick.btns.forEach((b, i) => b.addEventListener('click', () => { got = i; }));
   return {
     check() {
       const ok = got === answer; pick.reveal(answer, got);
-      const why = c.kind === 'up' ? 'The new spot is higher, so the walker always accepts it.' : 'The new spot is at most a quarter as high, so the walker usually stays put.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${why} Step after step, the walker spends time in proportion to height, so its visited places pile up in the shape of the curve.` };
+      const why = c.kind === 'up' ? '○ is higher, so the walker always goes.' : '○ is far lower, so the walker usually stays.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}${why} Over many steps its visits pile up in the shape of the curve.` };
     },
     solve() { pick.btns[answer].click(); },
     solveWrong() { pick.btns[1 - answer].click(); },
@@ -292,10 +316,11 @@ UNITS[2] = {
     { id: 'u2-steps-tut', name: 'Two steps', blurb: 'Pick a share, draw shapes.', kind: 'tutorial', build: buildTwoSteps, help: 'Tap the flashing button, then the next one that flashes.' },
     { id: 'u2-predict', name: 'Predict ten draws', blurb: 'Bracket the next count.', kind: 'streak', target: 5, hearts: 2, build: buildPredict,
       help: 'Drag the two handles to bracket the number of circles you expect among ten more draws, 9 times in 10. Two things are uncertain: the share (the curve) and the luck of the draws. Predictions are wider than you would get by just trusting the average.' },
-    { id: 'u2-which', name: 'Which simulation?', blurb: 'Prior or posterior predictive.', kind: 'streak', target: 5, hearts: 2, build: buildWhich,
-      help: 'Each picture is 400 simulated runs of ten draws. The prior predictive comes from the belief before any draws (wide, centred on 50%). The posterior predictive comes from the belief after the draws. A third picture ignores how unsure the share still is, so it is too narrow.' },
+    { id: 'u2-which', name: 'Which simulation?', blurb: 'Prior, posterior or average only.', kind: 'streak', target: 5, hearts: 2, build: buildWhich,
+      help: 'Each picture is 400 simulated runs of ten draws. The prior predictive comes from the belief before any draws (wide, centred on 50%). The posterior predictive comes from the belief after the draws. A third picture treats the draws’ average as the exact share, ignoring how unsure it is, so it is too narrow. You are asked for one of the three.' },
     { id: 'u2-blowup-tut', name: 'Too many cells', blurb: 'Why grids stop working.', kind: 'tutorial', build: buildBlowup, help: 'Tap the flashing button to add a second unknown.' },
+    { id: 'u2-walk-tut', name: 'A walker', blurb: 'Propose a jump.', kind: 'tutorial', build: buildWalkTut, help: 'Tap the flashing button. That is the only thing you can do here.' },
     { id: 'u2-move', name: 'Move or stay?', blurb: 'A walker samples the curve.', kind: 'streak', target: 5, hearts: 2, build: buildMove,
-      help: 'The walker stands at the filled dot and proposes the hollow one. If the proposal is higher it always goes. If it is far lower it nearly always stays. Choose which is more likely.' },
+      help: 'The walker stands at the filled dot and proposes the hollow one. If the proposal is higher it always goes. If it is far lower it nearly always stays. Choose what it does.' },
   ],
 };

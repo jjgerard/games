@@ -25,8 +25,8 @@ const M = MM;
 const f1 = x => M.fmt(x, 1), f2 = x => M.fmt(x, 2), f0 = x => M.fmt(x, 0);
 const stagePad = stage => { const cs = getComputedStyle(stage); return stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); };
 
-// Height for a picture: what is left of the stage, keeping 70px back for the answer's explanation to grow into.
-const roomH = (ctx, other = 0, min = 170, max = 320) => Math.round(M.clamp(ctx.stage.clientHeight - 82 - other, min, max));
+// Height for a picture: what is left of the stage (the explanation has its own reserved slot above, so nothing needs to be kept back).
+const roomH = (ctx, other = 0, min = 170, max = 340) => Math.round(M.clamp(ctx.stage.clientHeight - 14 - other, min, max));
 
 // A marker shape as an SVG node, centred on (0,0). Shapes differ by form, not only colour.
 function marker(shape, r = 8, cls = '') {
@@ -115,12 +115,12 @@ const SCALE_ROWS = {
   L: { name: 'Log-odds', lo: -4, hi: 4, ticks: [[-4, '−4'], [-2, '−2'], [0, '0'], [2, '2'], [4, '4']], land: 0, get: p => M.qlogis(p), set: v => M.plogis(v) },
 };
 const SCALE_FMT = { P: v => ((v >= 0.995 || v <= 0.005) && v > 0 && v < 1 ? M.fmt(v, 3) : M.fmt(v, 2)).replace(/^0\./, '.'), O: v => v >= 100 ? f0(v) : v >= 10 ? f1(v) : f2(v), L: v => f1(v) };
-function Scales3(ctx, { p = 0.5, order = ['P', 'O', 'L'], drag = ['P', 'O', 'L'], onChange = () => {}, pulse = null, label = 'Probability, odds and log-odds number lines', pitch = 68 } = {}) {
+function Scales3(ctx, { p = 0.5, order = ['P', 'O', 'L'], drag = ['P', 'O', 'L'], onChange = () => {}, pulse = null, label = 'Probability, odds and log-odds number lines', pitch = 72 } = {}) {
   const ch = Plot(ctx, { h: pitch * order.length - 4, left: 14, right: 14, top: 0, bottom: 0, label });
   const api = { ch, p, rows: {}, rings: {}, locked: false };
   const L = ch.W - 28;
   order.forEach((key, i) => {
-    const R = SCALE_ROWS[key], y0 = i * pitch, ay = y0 + 38;
+    const R = SCALE_ROWS[key], y0 = i * pitch, ay = y0 + 42;
     const X = v => 14 + (v - R.lo) / (R.hi - R.lo) * L;
     const row = { R, ay, X, label: ch.text(14, y0 + 17, '', 'tx tb') };
     ch.pline(14, ay, 14 + L, ay, 'axis');
@@ -158,12 +158,12 @@ function Scales3(ctx, { p = 0.5, order = ['P', 'O', 'L'], drag = ['P', 'O', 'L']
 // ---------------------------------------------------------------------------
 // Bars on the log-odds axis, with the means. Each bar is a cell's log-odds; its probability is the label.
 // ---------------------------------------------------------------------------
-function LogitBars(ctx, { vals, names = ['A', 'B', 'C', 'D'], drag = [], pulse = -1, means = true, range = [-7.5, 7.5], pitch = 34, label = 'Bars on the log-odds axis' }) {
+function LogitBars(ctx, { vals, names = ['A', 'B', 'C', 'D'], drag = [], pulse = -1, means = true, range = [-7.5, 7.5], pitch = 34, label = 'Bars on the log-odds axis', grid = false }) {
   const n = vals.length, tickH = 54, topPad = 22, H = topPad + n * pitch + tickH;
-  const ch = Plot(ctx, { h: H, left: 70, right: 12, top: topPad, bottom: tickH, xr: range, yr: [0, 1], label });
+  const ch = Plot(ctx, { h: H, left: 84, right: 12, top: topPad, bottom: tickH, xr: range, yr: [0, 1], label });
   const api = { ch, vals: vals.slice(), bars: [], handles: [] };
   const y0 = topPad;
-  const lt = []; for (let t = Math.ceil(range[0] / 3) * 3; t <= range[1]; t += 3) lt.push([t, f0(t)]);
+  const lt = [], lstep = grid ? 2 : 3; for (let t = Math.ceil(range[0] / lstep) * lstep; t <= range[1]; t += lstep) lt.push([t, f0(t)]);
   const pt = [[M.qlogis(0.01), '.01'], [M.qlogis(0.1), '.1'], [0, '.5'], [M.qlogis(0.9), '.9'], [M.qlogis(0.99), '.99']].filter(([v]) => v > range[0] && v < range[1]);
   const ay = y0 + n * pitch;
   ch.pline(ch.X(range[0]), ay, ch.X(range[1]), ay, 'axis');
@@ -172,6 +172,7 @@ function LogitBars(ctx, { vals, names = ['A', 'B', 'C', 'D'], drag = [], pulse =
   ch.pline(ch.left - 4, ay + 25, ch.W - ch.right, ay + 25, 'axis faint');
   for (const [v, s] of pt) { ch.pline(ch.X(v), ay + 25, ch.X(v), ay + 30, 'axis'); ch.text(ch.X(v), ay + 50, s, 'tx tick', 'middle'); }
   ch.text(6, ay + 50, 'prob.', 'tx tick');
+  if (grid) for (let t = Math.ceil(range[0]); t <= range[1]; t++) if (t) ch.pline(ch.X(t), y0, ch.X(t), ay, 'grid');
   ch.pline(ch.X(0), y0 - 2, ch.X(0), ay, 'zero');
   vals.forEach((v, i) => {
     const yc = y0 + i * pitch + pitch / 2;
