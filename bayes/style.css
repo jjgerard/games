@@ -481,3 +481,6 @@ a.link-btn { display: inline-flex; align-items: center; min-height: 44px; }
 
 /* Home screen: the hero already shows the name and logo */
 body:has(#screen-home:not(.hidden)) #app-header .brand { visibility: hidden; }
+
+/* Home screen: All games link sits under "How does this work?" */
+#screen-home .card a.allgames { display: flex; width: fit-content; margin: 0 auto; }
