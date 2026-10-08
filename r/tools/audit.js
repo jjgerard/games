@@ -15,7 +15,7 @@
 const { chromium } = require('playwright');
 const VERBOSE = process.argv.includes('--verbose');
 const SIZES = [[360, 640], [320, 568], [414, 800]];
-const URL = 'http://localhost:' + (process.env.PORT || 8123) + '/index.html?seed=31';
+const URL = 'http://localhost:' + (process.env.PORT || 8202) + '/index.html?seed=31';
 
 const inPage = () => {
   const out = { targets: [], pictures: [], contrast: [], names: [], graphics: [], fonts: [] };
@@ -36,7 +36,7 @@ const inPage = () => {
     if (!nameOf(e)) out.names.push({ sig: sig(e), what: 'control has no accessible name' });
   }
   // ---- pictures
-  const pics = [['.bagbox svg', 'bag'], ['.kindhead svg.bag-sm', 'bag'], ['.chipcol svg.bag-sm', 'bag'], ['.cbag svg', 'bag'], ['.sbag svg', 'shelfbag'], ['.fgrid svg', 'gridshape'], ['.tray svg', 'tray'], ['.shelf svg', 'shelf'], ['.drawnbox svg', 'tray'], ['.bigshape svg', 'tray']];
+  const pics = [['svg.chart', 'chart'], ['.bagbox svg', 'bag'], ['.kindhead svg.bag-sm', 'bag'], ['.chipcol svg.bag-sm', 'bag'], ['.cbag svg', 'bag'], ['.sbag svg', 'shelfbag'], ['.fgrid svg', 'gridshape'], ['.tray svg', 'tray'], ['.shelf svg', 'shelf'], ['.drawnbox svg', 'tray'], ['.bigshape svg', 'tray']];
   for (const [q, kind] of pics) for (const e of scope.querySelectorAll(q)) {
     if (!shown(e)) continue; const r = e.getBoundingClientRect();
     let shapeMin = null; if (kind === 'bag' || kind === 'shelfbag') { const sh = [...e.querySelectorAll('circle.sh, rect.sh')]; if (sh.length) shapeMin = Math.min(...sh.map(s => { const b = s.getBoundingClientRect(); return Math.min(b.width, b.height); })); }
@@ -49,7 +49,7 @@ const inPage = () => {
     if (!labelled) out.graphics.push({ sig: sig(e), what: 'graphic with no text alternative' });
   }
   // ---- containers that show information must say it in words
-  for (const q of ['.tray', '.tally', '.tallyrow', '.fgrid', '.freq', '.barsrow', '.curveview', '.shelf', '.shelfstrip', '.bagwrap', '.bagbox', '.kindhead', '.plot', '.barstrip', '.pile', '.trace', '.shrinkstrip', '.ptable', '.ssgroup']) for (const e of scope.querySelectorAll(q)) {
+  for (const q of ['.grid', '.drawers', '.boxes', '.matchcols', '.bin', '.console', '.codebox', '.stmtbox', '.tray', '.tally', '.tallyrow', '.fgrid', '.freq', '.barsrow', '.curveview', '.shelf', '.shelfstrip', '.bagwrap', '.bagbox', '.kindhead', '.plot', '.barstrip', '.pile', '.trace', '.shrinkstrip', '.ptable', '.ssgroup']) for (const e of scope.querySelectorAll(q)) {
     if (!shown(e) || !e.children.length) continue;
     const has = e.getAttribute('aria-label') || (e.textContent || '').trim() || e.querySelector('.sr-only') || e.querySelector('[role="img"][aria-label]') || e.querySelector('[aria-label]') || e.closest('[aria-label]') || e.closest('button');
     if (!has) out.graphics.push({ sig: sig(e), what: 'shows information with no text alternative' });
