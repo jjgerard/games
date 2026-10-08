@@ -1,6 +1,6 @@
 # Learning Games
 
-Short, visual, mobile-first browser games that teach statistics and R from a much lower starting point than most tutorials. Static site: no build, no accounts, no server. Progress is stored in the browser.
+Short, visual, mobile-first browser games that teach statistics and R. Each begins with very basic ideas and builds up. Static site: no build, no accounts, no server. Progress is stored in the browser.
 
 | Game | Folder | Topic |
 |---|---|---|
