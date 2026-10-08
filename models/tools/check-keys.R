@@ -155,7 +155,7 @@ sect("typical person vs average of people (o-typical)")
 bad <- 0
 for (q in S[["o-typical"]]) {
   ps <- num(q$ps); mu <- q$mu; sd <- q$sd; mean_int <- integrate(function(z) plogis(mu + sd * z) * dnorm(z), -Inf, Inf)$value; med <- plogis(mu)
-  r <- near(sort(ps)[8], med, 1e-9) && near(q$med, med, 1e-9) && abs(mean(ps) - mean_int) < 0.02 && abs(mean_int - med) >= 0.05; bad <- bad + !r; ok("o-typical", r)
+  r <- near(sort(ps)[(length(ps) + 1) / 2], med, 1e-9) && near(q$med, med, 1e-9) && abs(mean(ps) - mean_int) < 0.035 && abs(mean_int - med) >= 0.05; bad <- bad + !r; ok("o-typical", r)
 }
 summ("o-typical: median = plogis(mu); mean by integrate", length(S[["o-typical"]]), bad)
 

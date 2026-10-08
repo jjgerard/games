@@ -143,8 +143,8 @@ function buildCodePrior(ctx) {
   return {
     check() {
       const s = Math.max(0.3, slider.get()[0] * D), ok = s >= lo - 1e-9 && s <= hi + 1e-9; slider.lock();
-      const why = ok ? '' : s < lo ? ' Too tight: the biggest slope would count as very unlikely.' : ' Too loose: it allows slopes far bigger than the feeds could differ.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}The biggest slope here is ${fmtNum(target)} cm, so a spread of about ${fmtNum(lo)} to ${fmtNum(hi)} fits. Another coding needs another prior.` };
+      const why = ok ? '' : s < lo ? ' Too tight.' : ' Too loose.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}The biggest slope here is ${fmtNum(target)} cm, so a spread of about ${fmtNum(lo)} to ${fmtNum(hi)} fits.${ok ? ' Another coding needs another prior.' : ''}` };
     },
     solve() { slider.set(0, (lo + hi) / 2 / D, true); },
     solveWrong() { slider.set(0, cd.id === 'sum' ? 0.8 : 0.1, true); },

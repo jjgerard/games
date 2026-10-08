@@ -79,8 +79,8 @@ function buildMean(ctx) {
   return {
     check() {
       const { mu, sigma } = get(), okM = Math.abs(mu - c.mean) <= 1.5 + 1e-9, okS = Math.abs(sigma - c.sd) <= 0.3 * c.sd + 0.3 + 1e-9, ok = okM && okS; slider.lock();
-      const why = ok ? '' : !okM ? ' Typical is where the dots balance.' : sigma < c.sd ? ' The band is too narrow.' : ' The band is too wide.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}Typical ${fmtNum(c.mean)} cm, spread ${fmtNum(c.sd)} cm. The model has just these two numbers: the intercept and the spread, called sigma.` };
+      const why = ok ? '' : !okM ? ' Typical: where the dots balance.' : sigma < c.sd ? ' The band is too narrow.' : ' The band is too wide.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}Typical ${fmtNum(c.mean)} cm, spread ${fmtNum(c.sd)} cm: the intercept and sigma, the model’s two numbers.` };
     },
     solve() { const a = toShare(c.mean, MEAN_XD), b = toShare(c.mean + c.sd, MEAN_XD); if (a > slider.get()[1]) { slider.set(1, b, true); slider.set(0, a, true); } else { slider.set(0, a, true); slider.set(1, b, true); } },
     solveWrong() { const w = c.mean > 20 ? c.mean - 8 : c.mean + 8, a = toShare(w, MEAN_XD), b = toShare(w + c.sd, MEAN_XD); if (w > c.mean) { slider.set(1, b, true); slider.set(0, a, true); } else { slider.set(0, a, true); slider.set(1, b, true); } },

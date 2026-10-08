@@ -108,8 +108,8 @@ function buildOutgrow(ctx) {
   return {
     check() {
       const n = nOf(slider.get()[0]), ok = n >= c.nStar && n <= c.nStar + 5; slider.lock();
-      const why = ok ? '' : n < c.nStar ? ' Too few: the priors still pull the two beliefs apart.' : ' More than needed.';
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}About ${c.nStar} draws are enough. With enough data, different priors lead to nearly the same answer.` };
+      const why = ok ? '' : n < c.nStar ? ' Too few.' : ' More than needed.';
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite.' + why + ' '}About ${c.nStar} draws are enough: with enough data, different priors give nearly the same answer.` };
     },
     solve() { slider.set(0, (c.nStar - 5) / 55, true); },
     solveWrong() { slider.set(0, c.nStar > 25 ? 0 : 1, true); },

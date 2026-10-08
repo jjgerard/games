@@ -422,7 +422,7 @@ const CODE_KEYS = ['trtA', 'trtB', 'half', 'one'];
 function codingMeans(rng) {
   const mA = U.int(rng, 28, 62), d = U.int(rng, 16, 32) * (rng() < 0.5 ? 1 : -1), mB = M.clamp(mA + d, 12, 90); return [mA, mB];
 }
-function codingChart(ctx, cod, mA, mB, { line = false, h = roomH(ctx, 0, 190, 320) } = {}) {
+function codingChart(ctx, cod, mA, mB, { line = false, h = roomH(ctx, 24, 190, 320) } = {}) {
   const ch = Plot(ctx, { h, left: 44, right: 14, top: 12, bottom: 34, xr: [-1.5, 1.5], yr: [0, 100], label: `Group means A and B plotted at their codes, ${cod.name}` });
   ch.axisY([[0, '0'], [50, '50'], [100, '100']]);
   const codes = [...new Set([cod.a, cod.b, 0])].sort((x, y) => x - y);

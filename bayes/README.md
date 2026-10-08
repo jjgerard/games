@@ -47,14 +47,15 @@ Same rules as before: something you move, drag, tap or place; tolerances not exa
 | Count the pile | slide a divider to the share of 300 samples left of a line (a posterior probability by counting) |
 | Two steps (tutorial) | pick a share from a belief, then draw ten shapes (simulating from parameters) |
 | Predict ten draws | bracket the count of circles in the next ten, 9 times in 10 (prior or posterior predictive; plugging in the average is refused) |
-| Which simulation? | tap the prior or posterior predictive among three simulated histograms (the third ignores the uncertain share) |
+| Which simulation? | tap the prior predictive, the posterior predictive or the 'average only' histogram (asked in turn; the average-only one ignores the uncertain share) |
 | Too many cells (tutorial) | add an unknown: 7 cells become 49 (why grids stop working) |
+| A walker (tutorial) | tap Propose a jump: the walker moves to the higher spot |
 | Move or stay? | a Metropolis walker: higher proposal moves, far lower proposal stays (why MCMC works) |
 
 **Unit 3: Lines and noise** (book ch. 4). Seedlings and dough.
 | Sub-level | You... |
 |---|---|
-| First marker (tutorial), Typical and spread | drag a marker (intercept-only model) and a second handle one spread above it |
+| First marker (tutorial), Typical and spread | drag a marker (intercept-only model); then place the typical value and a second handle so the band holds about 2 in 3 dots (sigma is named afterwards) |
 | First line (tutorial), Fit by eye | drag line ends through the dots; within 3 cm of lm() at both ends |
 | Add the noise | slide sigma until simulated dots scatter like real ones (a line is not the data; coefficient is not sigma) |
 | Tame the slope | slide the prior spread of a slope until 90 to 99% of 25 prior lines stay in the plausible frame |
@@ -65,8 +66,8 @@ Same rules as before: something you move, drag, tap or place; tolerances not exa
 **Unit 4: Groups and pooling** (book ch. 5). Apple trees, branches.
 | Sub-level | You... |
 |---|---|
-| Slide to pool (tutorial) | slide pooling from none to complete; dots slide toward the all-trees average |
-| Where does it land? | drag one tree to its partially pooled position (few branches or alike trees: close to the average) |
+| Slide to pool (tutorial) | slide pooling from none to complete (ends labelled); green dots slide toward the all-trees average |
+| Where does it land? | drag the green dot (or the slider under it) to a tree's partially pooled position (few branches or alike trees: close to the average); a key names ring, dashed line, band |
 | Who moves most? | tap the tree moved most (distance and few branches both matter; the naive picks fail 2 in 3) |
 | How much pooling? | set the pooling slider the data call for (balanced groups; ANOVA/lme4 weight) |
 | Name the picture | tap the picture showing none, partial or complete pooling |
@@ -88,6 +89,13 @@ Same rules as before: something you move, drag, tap or place; tolerances not exa
 | Rhat and ESS | tap the row of a summary that should not be trusted |
 | How much is prior? | slide to the prior's share of imagined against real shapes |
 | Outgrow the prior | fewest draws until a flat and a firm prior agree to within 3 points |
+
+### Review pass on Units 2-6 (against `../docs/objections.md`)
+- Layout shift: the question slot now reserves 4 lines (5 below 350px wide), and every prompt and every right/wrong feedback in Units 2-6 is written to fit, so nothing below it jumps when feedback arrives (checked at 320x568, 360x640, 414x800, right and wrong answers).
+- Pictures enlarged (plots 214-232 tall, bars, piles, dots r 4.6-6.5), captions are real text above bars, never drawn over them; slider ends are labelled; rings are drawn larger than the green dot so the learner's own average stays visible.
+- Prompts rewritten as situation plus exact action; jargon (sigma, brms, prior/posterior predictive, ESS) arrives after the picture or with its explanation; repeated info removed (code notes, legends repeated in prompts).
+- 'Move or stay?' got a one-move tutorial ('A walker'); 'Which simulation?' now asks for all three kinds in turn so it differs from 'Predict ten draws'.
+- Items capped: at most 4 trees, 12 branches, 14 real draws.
 
 ## Placement test
 Ten pictures, no feedback, ordered by unit: share of circles, flip it, rare bags (covers two-bag and several-draws), product (covers chips and Unit 1 names), pool-the-shapes shift, count the pile, predict ten draws, read the table, where does it land, find the intercept. The first one missed is where you start and everything before it is marked done (no points). It does not test grid peaks, MCMC walking, Unit 5 slopes or Unit 6, so a pass assumes those; the sub-levels stay replayable. Unit 6 always opens after Unit 5.
