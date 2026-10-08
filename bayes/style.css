@@ -474,3 +474,7 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .pickbtn.two-line { line-height: 1.15; }
 .legend2 { display: flex; justify-content: center; gap: 2px 16px; flex-wrap: wrap; font-weight: 700; font-size: 1rem; line-height: 1.2; }
 .legend2 .lg { display: inline-flex; align-items: center; gap: 6px; }
+
+a.link-btn { display: inline-flex; align-items: center; min-height: 44px; }
+.backrow { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
+.screen > a.allgames { display: flex; width: fit-content; }

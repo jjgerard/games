@@ -305,3 +305,7 @@ button.prow { min-height: 44px; cursor: pointer; } button.prow.on { border-color
 .tx.halo { paint-order: stroke; stroke: var(--bg); stroke-width: 6px; stroke-linejoin: round; }
 .nw { white-space: nowrap; }
 .nestgrid { grid-template-columns: repeat(6, 34px); gap: 4px; } .nc { height: 26px; }
+
+a.link-btn { display: inline-flex; align-items: center; min-height: 44px; }
+.backrow { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
+.screen > a.allgames { display: flex; width: fit-content; }

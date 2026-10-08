@@ -333,7 +333,7 @@ E.fill = (ctx, c) => {
   if (c.pic) wrap.append(c.pic);
   const blankIds = Object.keys(c.blanks);
   const gd = c.grid.data.map((row, r) => row.map((v, k) => blankIds.includes(r + ',' + k) ? { v: '?', cls: 'blank' } : v));
-  const g = Grid({ ...c.grid, data: gd, kind: 'btn', only: c.tutorial ? blankIds[0] : null });
+  const g = Grid({ ...c.grid, data: gd, kind: 'btn', only: id => blankIds.includes(id) && (!c.tutorial || id === blankIds[0]) });
   wrap.append(g.wrap);
   const vals = {}; let held = null, locked = false, done = false;
   const tray = el('div', { class: 'tilebox', role: 'group', 'aria-label': 'Values' });
