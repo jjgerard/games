@@ -14,7 +14,7 @@ const poolPick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
 // ---------------------------------------------------------------------------
 function buildAvgTutM(ctx) {
   ctx.setPrompt('Each row is one person; each dot is one answer. Tap the flashing person.');
-  const rows = PersonRows([{ label: 'P1', n: 5 }, { label: 'P2', n: 5 }, { label: 'P3', n: 5 }], { flashIdx: 1, onPick: i => { if (i === 1) ctx.complete('Those five dots all came from one person. They are not five independent pieces of evidence about people.'); } });
+  const rows = PersonRows([{ label: 'P1', n: 5 }, { label: 'P2', n: 5 }, { label: 'P3', n: 5 }], { flashIdx: 1, only: 1, onPick: i => { if (i === 1) ctx.complete('Those five dots all came from one person. They are not five independent pieces of evidence about people.'); } });
   ctx.stage.append(rows.el);
   return { solve: () => rows.rows[1].click() };
 }
@@ -98,7 +98,7 @@ function gridSpec(D, names) {
 }
 function buildGridTut(ctx) {
   ctx.setPrompt('A design table: a row per person, a column per condition. Tap the flashing cell: P1 was tested in condition A.');
-  const g = DesignGrid({ rows: ['P1', 'P2'], cols: ['A', 'B'], tap: true, flashCell: [0, 0], caption: 'Design table', onTap: () => { g.lock(); ctx.complete('A filled cell means that person has data in that condition. P1 in both A and B would mean the condition is within people.'); } });
+  const g = DesignGrid({ rows: ['P1', 'P2'], cols: ['A', 'B'], tap: true, flashCell: [0, 0], tapOnly: [0, 0], caption: 'Design table', onTap: () => { g.lock(); ctx.complete('A filled cell means that person has data in that condition. P1 in both A and B would mean the condition is within people.'); } });
   ctx.stage.append(g.el);
   return { solve: () => g.toggle(0, 0, true) };
 }
@@ -128,7 +128,10 @@ function buildGridLabel(ctx) {
   ctx.setPrompt('Here is who has data where. For each factor: <b>within</b> people or <b>between</b> people?');
   const g = DesignGrid({ rows: ['P1', 'P2', 'P3', 'P4'], cols: spec.cols, colGroups: spec.colGroups, dots: (r, c) => D.cells.has(r + ':' + c) ? 1 : 0, cell: D.two ? 40 : 56, cellH: 32, caption: 'Observed design' });
   const facs = D.two ? [names[0], names[1]] : [names[0]], truth = D.two ? [D.F1, D.F2] : [D.F1], picks = [];
-  const rowsEl = facs.map((f, i) => { const c = Choices([{ key: 'within', label: 'Within' }, { key: 'between', label: 'Between' }], { cols: 2, onPick: k => { picks[i] = k; ctx.setReady(facs.every((_, j) => picks[j])); } }); return { f, c, el: el('div', { class: 'facrow' }, el('span', { class: 'facname' }, f), c.el) }; });
+  // picking a label tints that factor's headers in the grid (blue = within, orange = between; the words are on the buttons too)
+  const heads = D.two ? [[...g.el.querySelectorAll('.dg-grp')], [...g.el.querySelectorAll('.dg-col')]] : [[...g.el.querySelectorAll('.dg-col')]];
+  const tint = (i, k) => heads[i].forEach(h => { h.classList.toggle('hw', k === 'within'); h.classList.toggle('hb', k === 'between'); });
+  const rowsEl = facs.map((f, i) => { const c = Choices([{ key: 'within', label: 'Within' }, { key: 'between', label: 'Between' }], { cols: 2, onPick: k => { picks[i] = k; tint(i, k); ctx.setReady(facs.every((_, j) => picks[j])); } }); return { f, c, el: el('div', { class: 'facrow' }, el('span', { class: 'facname' }, f), c.el) }; });
   ctx.stage.append(g.el, ...rowsEl.map(r => r.el));
   return {
     check() {
@@ -269,7 +272,7 @@ function buildFormBuild(ctx) {
   return {
     check() { const ok = isRight(tb.chosen); tb.lock(); const keep = tb.chosen.slice();
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `Needed: ${B.want.join(' + ')}${B.alt ? ' (or (1 | school/classroom), which means the same)' : ''}. A random term is (what varies | what it varies by).` }; },
-    solve() { tb.set(B.want); }, solveWrong() { tb.set(B.want.length > 1 ? B.want.slice(0, 1) : [B.tiles.find(t => !B.want.includes(t))]); }, info: { want: B.want, tiles: B.tiles },
+    solve() { tb.set(B.want); }, solveWrong() { tb.set(B.want.length > 1 ? B.want.slice(0, 1) : [B.tiles.find(t => !B.want.includes(t))]); }, info: { want: B.want, tiles: B.tiles, shown: tiles },
   };
 }
 // formula -> which variance components does it create
@@ -303,10 +306,11 @@ function buildFormRead(ctx) {
   };
 }
 const TYPO_BANK = [
-  { bad: '(subj | 1)', why: 'The two sides are swapped. What varies goes before the bar, what it varies by goes after: (1 | subj).' },
-  { bad: '(1, cond | subj)', why: 'A comma is not allowed there. Join terms with + inside the brackets: (1 + cond | subj).' },
-  { bad: '1 | subj', why: 'Without brackets this is not a random term at all. R does not stop you, but the model is nonsense. Write (1 | subj).' },
-  { bad: '(1 | cond)', why: 'cond has two levels you care about and you also have it as a fixed effect. A random effect is for many sampled levels (subj), not for the levels you chose.' },
+  { bad: '(subj | 1)', why: 'The two sides are swapped. What varies goes before the bar, what it varies by goes after: (1 | subj). lme4 stops with a cryptic error.' },
+  { bad: '(1, cond | subj)', why: 'A comma is not allowed there: R cannot even read it. Join terms with +: (1 + cond | subj).' },
+  { bad: '1 | subj', why: 'Without brackets the bar splits the whole formula, so cond becomes random-only and its fixed effect disappears. R does not stop you. Write (1 | subj).' },
+  { bad: '(1 | cond)', why: 'cond has two levels you chose, and it is already a fixed effect. A random effect is for many sampled levels like subj. lme4 warns the fit is not uniquely determined.' },
+  { bad: '(1 * cond | subj)', why: 'R reads 1 * cond as just 1, so the random slope silently vanishes: no error, only an intercept. Write (1 + cond | subj).' },
 ];
 const GOOD_TERMS = ['(1 | subj)', '(1 + cond | subj)', '(1 | item)', '(0 + cond | subj)'];
 function buildTypo(ctx) {
@@ -318,7 +322,7 @@ function buildTypo(ctx) {
   ctx.stage.append(tiles.el);
   return {
     check() { const ok = +tiles.key === ans; tiles.lock(); tiles.mark(String(ans), 'right'); if (!ok) tiles.mark(tiles.key, 'wrongc'); return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + T.why }; },
-    solve() { tiles.pick(String(ans), true); }, solveWrong() { tiles.pick(String((ans + 1) % 3), true); }, info: { ans, bad: T.bad },
+    solve() { tiles.pick(String(ans), true); }, solveWrong() { tiles.pick(String((ans + 1) % 3), true); }, info: { ans, bad: T.bad, parts: parts.map(x => x.t) },
   };
 }
 // random-effects table: which row does a term make?
@@ -388,17 +392,17 @@ function buildEstCells(ctx) {
   };
 }
 function buildEstSlope(ctx) {
-  const rng = ctx.rng, kind = U.pick(rng, ['within2', 'within1', 'between']), P = 4;
-  const counts = Array.from({ length: P }, (_, p) => kind === 'between' ? [p % 2 === 0 ? 3 : 0, p % 2 === 0 ? 0 : 3] : [kind === 'within2' ? 2 : 1, kind === 'within2' ? 2 : 1]);
+  const rng = ctx.rng, kind = U.pick(rng, ['within2', 'within3', 'within1', 'between']), P = 4;
+  const counts = Array.from({ length: P }, (_, p) => kind === 'between' ? [p % 2 === 0 ? 3 : 0, p % 2 === 0 ? 0 : 3] : (n => [n, n])(kind === 'within1' ? 1 : kind === 'within2' ? 2 : 3));
   ctx.setPrompt('Rows are participants, columns are the two levels of <b>condition</b>. Tick every term this design <b>can estimate</b>.');
   const g = DesignGrid({ rows: ['P1', 'P2', 'P3', 'P4'], cols: ['cond A', 'cond B'], dots: (r, c) => counts[r][c], cell: 70, cellH: 38, rowW: 40, caption: 'Participant by condition design' });
   const chips = ChipSet([{ key: 'int', label: '(1 | subj)' }, { key: 'slope', label: '(1 + cond | subj)' }], { cols: 1, label: 'Terms', onChange: () => ctx.setReady(true) });
   chips.el.classList.add('monochips');
   ctx.stage.append(g.el, chips.el);
-  const est = { int: true, slope: kind === 'within2' }, want = Object.keys(est).filter(k => est[k]).sort();
+  const est = { int: true, slope: kind === 'within2' || kind === 'within3' }, want = Object.keys(est).filter(k => est[k]).sort();
   return {
     check() { const got = chips.keys().sort(), ok = JSON.stringify(got) === JSON.stringify(want); chips.lock(); for (const k of ['int', 'slope']) chips.btns[k].classList.add(est[k] ? 'right' : 'wrongc');
-      const why = { within2: 'Each person has repeats in both conditions, so both their baseline and their condition effect can be measured.', within1: 'One answer per person per condition: a person\'s effect and the noise are the same thing. lme4 stops: observations <= random effects.', between: 'Each person is in one condition only, so no one has an effect of condition to vary. lme4 may still fit it, but the slope variance means nothing.' }[kind];
+      const why = { within2: 'Each person has repeats in both conditions, so both their baseline and their condition effect can be measured.', within3: 'Each person has repeats in both conditions, so both their baseline and their condition effect can be measured.', within1: 'One answer per person per condition: a person\'s effect and the noise are the same thing. lme4 stops: observations <= random effects.', between: 'Each person is in one condition only, so no one has an effect of condition to vary. lme4 may still fit it, but the slope variance means nothing.' }[kind];
       return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + why }; },
     solve() { chips.setAll(Object.fromEntries(want.map(k => [k, true]))); }, solveWrong() { chips.setAll(Object.fromEntries(['int', 'slope'].map(k => [k, !est[k]]))); }, info: { kind, est, want, counts },
   };
@@ -437,7 +441,7 @@ function buildSlopeShape(ctx) {
   };
 }
 function buildSlopeCost(ctx) {
-  const rng = ctx.rng, C = poolPick(rng, POOLS.cost), A = { name: '(1 | id)', se: C.se1 }, B = { name: '(1 + cond | id)', se: C.se2 };
+  const rng = ctx.rng, wantKind = rng() < 0.5 ? 'wider' : 'same', C = poolPick(rng, POOLS.cost.filter(c => c.kind === wantKind)), A = { name: '(1 | id)', se: C.se1 }, B = { name: '(1 + cond | id)', se: C.se2 };
   const rowsOrder = rng() < 0.5 ? [A, B] : [B, A];
   ctx.setPrompt('Same data, two models. Each bar is the condition effect ± 2 standard errors. <b>Which would you trust</b>?');
   const mse = Math.max(C.se1, C.se2), lo = Math.floor(Math.min(0, C.eff - 2 * mse) - 0.5), hi = Math.ceil(C.eff + 2 * mse + 0.5);
@@ -492,7 +496,7 @@ function buildSingular(ctx) {
 }
 // the empty-cell hunt
 function buildEmpty(ctx) {
-  const rng = ctx.rng, nEmpty = U.pick(rng, [1, 1, 2]), all = Array.from({ length: 8 }, (_, i) => i);
+  const rng = ctx.rng, nEmpty = U.pick(rng, [1, 2]), all = Array.from({ length: 8 }, (_, i) => i);
   const empties = U.shuffle(rng, all).slice(0, nEmpty).sort((a, b) => a - b);
   // index i: a = i >> 2 (0/1), c = (i >> 1) & 1, b = i & 1 ; columns order: C1B1, C1B2, C2B1, C2B2 -> col = c * 2 + b ; row = a
   const pos = i => ({ r: i >> 2, c: ((i >> 1) & 1) * 2 + (i & 1) });
@@ -510,10 +514,10 @@ function buildEmpty(ctx) {
   };
 }
 const SCENARIOS = [
-  { msg: 'number of levels of each grouping factor must be < number of observations (problems: p:i)', best: 'Count answers per cell: is each cell measured once?', others: ['Add more random slopes', 'Ignore it: the fixed effects are fine'], why: 'One answer per participant × item: that term cannot be told from noise. Inspect the design before adding terms.' },
-  { msg: 'boundary (singular) fit: see help(\'isSingular\')', best: 'Simplify the random part (drop the slope or the correlation)', others: ['Add more random slopes', 'Ignore it: it only looks scary'], why: 'A singular fit says the random structure is richer than the data can support. Simplify, or check that the design can estimate it.' },
-  { msg: 'fixed-effect model matrix is rank deficient so dropping 1 column / coefficient', best: 'Look for an empty cell: table() the factors', others: ['Add a random slope', 'Change the optimiser'], why: 'A dropped column means two fixed terms say the same thing, usually because a cell is empty. Random terms do not fix that.' },
-  { msg: 'number of observations (=24) <= number of random effects (=24) for term (1 + cond | id)', best: 'Check whether each person has repeats in each condition', others: ['Increase the iteration limit', 'Add a second random slope'], why: 'One answer per person per condition: a person\'s effect cannot be told from noise. A design problem, not an optimiser one.' },
+  { msg: 'number of levels of each grouping factor must be < number of observations (problems: p:i)', best: 'Count answers in each cell', others: ['Add more random slopes', 'Ignore it: the fixed effects are fine'], why: 'One answer per participant \u00d7 item: that term cannot be told from noise. Inspect the design before adding terms.' },
+  { msg: 'boundary (singular) fit: see help(\'isSingular\')', best: 'Drop the slope or the correlation', others: ['Add more random slopes', 'Ignore it: it only looks scary'], why: 'A singular fit says the random structure is richer than the data can support. Simplify, or check that the design can estimate it.' },
+  { msg: 'fixed-effect model matrix is rank deficient so dropping 1 column / coefficient', best: 'Look for an empty cell', others: ['Raise the iteration limit', 'Change the optimiser, then refit'], why: 'A dropped column means two fixed terms say the same thing, usually because a cell is empty. Random terms do not fix that.' },
+  { msg: 'number of observations (=24) <= number of random effects (=24) for term (1 + cond | id)', best: 'Check repeats per person and cond', others: ['Increase the iteration limit', 'Add a second random slope for cond'], why: 'One answer per person per condition: a person\'s effect cannot be told from noise. A design problem, not an optimiser one.' },
 ];
 function buildWhat(ctx) {
   const rng = ctx.rng, S = U.pick(rng, SCENARIOS), opts = U.shuffle(rng, [S.best, ...S.others]);
@@ -630,9 +634,9 @@ function buildWriteSlots(ctx) {
   };
 }
 const INTERCEPT_BANK = [
-  { ctx: 'condition coded −½ / +½; participant random intercept', right: 'Average of both conditions, for a typical person (log-odds)', wrong: ['The baseline condition only', 'A probability: about 0.8 for everyone'], why: 'With balanced −½/+½ coding, 0 sits halfway between the conditions, so the intercept is their average (on the log-odds scale, for the typical person).' },
-  { ctx: 'condition coded 0 / 1; participant random intercept', right: 'The baseline condition (code 0), in log-odds', wrong: ['Average of both conditions', 'A probability: about 0.8 for everyone'], why: 'With 0/1 coding the intercept is the reference condition only. It is a log-odds, not a probability.' },
-  { ctx: 'age in months, not centred; no random effects', right: 'The prediction at age 0, far outside the data', wrong: ['The average score across the children', 'The score at the typical age'], why: 'Without centring, the intercept is read at x = 0. Report it as an anchor, not as a finding about the children.' },
+  { ctx: 'condition coded \u2212\u00bd / +\u00bd; participant random intercept', right: 'Average of both conditions, for the typical person', wrong: ['The baseline condition only', 'A probability of about .8 for everyone'], why: 'With balanced \u2212\u00bd/+\u00bd coding, 0 sits halfway between the conditions, so the intercept is their average (on the log-odds scale, for the typical person).' },
+  { ctx: 'condition coded 0 / 1; participant random intercept', right: 'The baseline condition, in log-odds', wrong: ['The average of both conditions, as a probability', 'A probability: about .8 for everyone'], why: 'With 0/1 coding the intercept is the reference condition only. It is a log-odds, not a probability.' },
+  { ctx: 'age in months, not centred; no random effects', right: 'The prediction at age 0', wrong: ['The average score of all the children', 'The score at the typical age'], why: 'Without centring, the intercept is read at x = 0, far outside the data. Report it as an anchor, not as a finding about the children.' },
   { ctx: 'age centred at its mean; participant random intercept', right: 'A typical child at the average age', wrong: ['The prediction at age 0', 'The average of the children\'s probabilities'], why: 'After centring, 0 on the model\'s age scale is the average age. The random-intercept model describes the typical (middle) person.' },
 ];
 function buildWriteInt(ctx) {

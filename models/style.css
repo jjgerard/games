@@ -293,3 +293,10 @@ button.prow { min-height: 44px; cursor: pointer; } button.prow.on { border-color
 .mt.cg th.mtname, .mt.cg thead th:first-child { width: auto; }
 
 .monochips .chip2 { min-height: 44px; }
+
+.dg-grp.hw, .dg-col.hw { background: #dbe8f2; border-radius: 6px; } .dg-grp.hb, .dg-col.hb { background: #f6dccf; border-radius: 6px; }
+.dg-grp.hw { border-bottom-color: var(--gb-dark); } .dg-grp.hb { border-bottom-color: var(--ga-dark); }
+
+/* header "?" button: 44px target, text as large as the question text */
+.btn-icon { width: 44px; height: 44px; margin: -5px 0; font-size: 1rem; }
+.handle:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }

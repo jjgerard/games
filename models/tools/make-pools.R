@@ -34,6 +34,7 @@ while ((nS < 30 || nO < 60) && tries < 4000) {
     m <- suppressMessages(suppressWarnings(glmer(f, d, family = binomial)))
   }
   vc <- as.data.frame(VarCorr(m)); cf <- coef(summary(m)); si <- isSingular(m)
+  if (kind == "glmer" && (any(cf[, 2] < 0.05) || any(abs(cf[, 3]) > 12))) next   # degenerate fits (separation) make poor teaching examples
   re <- lapply(which(vc$grp != "Residual" & is.na(vc$var2)), function(i) list(grp = "id", name = if (vc$var1[i] == "(Intercept)") "Intercept" else vc$var1[i], sd = r2(vc$sdcor[i], 2)))
   cr <- vc$sdcor[!is.na(vc$var2)]
   if (length(cr)) re[[2]]$corr <- if (is.nan(cr)) "NaN" else r2(cr, 2)

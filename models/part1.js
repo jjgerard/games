@@ -162,7 +162,7 @@ function buildBound(ctx) {
 // ---------------------------------------------------------------------------
 function buildScaleTut(ctx) {
   ctx.setPrompt('Drag the flashing marker to the right. One chance, three ways to write it.');
-  const s = Scales3(ctx, { p: 0.2, pulse: 'P', onChange: p => { if (p >= 0.88) { s.lock(); ctx.complete('The same chance has three names: a probability, odds, and log-odds. Moving one moves all three.'); } } });
+  const s = Scales3(ctx, { p: 0.2, pulse: 'P', drag: ['P'], onChange: p => { if (p >= 0.88) { s.lock(); ctx.complete('The same chance has three names: a probability, odds, and log-odds. Moving one moves all three.'); } } });
   return { solve: () => s.setP(0.9, true) };
 }
 const SET_TARGETS = [
@@ -254,8 +254,20 @@ function buildAvgMid(ctx) {
   };
 }
 // Which flag is the probability the model reports? (X and Y sit on a probability line)
+// cases where the model's probability is farther from .5 than the plain average of the probabilities (one extreme cell),
+// and cases where it is closer (two high cells and one near-zero cell), so "the more extreme one" is no strategy
+function whichCase(rng) {
+  for (let t = 0; t < 4000; t++) {
+    const kind = U.pick(rng, ['toward', 'closer']); let lg;
+    if (kind === 'toward') { lg = avgCase(rng, 3).lg; if (rng() < 0.5) lg = lg.map(v => M.round(-v, 1)); }
+    else { const s = rng() < 0.5 ? 1 : -1; lg = U.shuffle(rng, [U.uni(rng, 2.7, 3.3), U.uni(rng, 2.7, 3.3), -U.uni(rng, 5.6, 6.8)].map(v => M.round(s * v, 1))); }
+    const p = lg.map(U.plogis), pm = U.mean(p), pl = U.plogis(U.mean(lg));
+    if (Math.abs(pm - pl) >= 0.13 && (kind === 'toward' || Math.abs(pl - 0.5) < Math.abs(pm - 0.5))) return { p, lg, m: U.mean(lg), pm, pl, kind };
+  }
+  throw new Error('no which-flag case found');
+}
 function buildAvgWhich(ctx) {
-  const rng = ctx.rng; let C, pm, pl; for (;;) { C = avgCase(rng, 3); pm = U.mean(C.p); pl = U.plogis(C.m); if (Math.abs(pm - pl) >= 0.13) break; }
+  const rng = ctx.rng, C = whichCase(rng), pm = C.pm, pl = C.pl;
   ctx.setPrompt('The model averages the cells on the <b>log-odds</b> scale. Which flag is the probability it reports?');
   const b = LogitBars(ctx, { vals: C.lg, means: false, pitch: 30 });
   const ch = Plot(ctx, { h: 74, left: 14, right: 14, top: 0, bottom: 0, label: 'Probability line with two flags, X and Y' });
@@ -271,9 +283,9 @@ function buildAvgWhich(ctx) {
     check() {
       const ok = tiles.key === ans; tiles.lock(); tiles.mark(ans, 'right'); if (!ok) tiles.mark(tiles.key, 'wrongc');
       b.addMarker(C.m, 'm-logit'); b.addMarker(U.qlogis(pm), 'm-prob');
-      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `Averaging log-odds gives ${prob(pl)}; averaging the probabilities gives ${prob(pm)}. The cell near ${prob(U.mean([Math.min(...C.p), Math.max(...C.p)]) > 0.5 ? Math.max(...C.p) : Math.min(...C.p))} pulls the log-odds average toward its end.` };
+      return { correct: ok, message: (ok ? 'Yes. ' : 'Not quite. ') + `Averaging log-odds gives ${prob(pl)}; averaging the probabilities gives ${prob(pm)}. A cell near 0 or 1 pulls the log-odds average toward its end.` };
     },
-    solve() { tiles.pick(ans); }, solveWrong() { tiles.pick(ans === 'X' ? 'Y' : 'X'); }, info: { pm, pl, p: C.p, ans, flipped },
+    solve() { tiles.pick(ans); }, solveWrong() { tiles.pick(ans === 'X' ? 'Y' : 'X'); }, info: { pm, pl, p: C.p, ans, flipped, kind: C.kind },
   };
 }
 function buildAvgLever(ctx) {

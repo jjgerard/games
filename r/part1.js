@@ -490,7 +490,7 @@ const U9 = {
         why: { f: { sapply: 'sapply goes over items. For rows or columns of a table use apply.', '*': 'Use apply for a table.' }, a: { '*': `${t === 0 ? '1 means rows' : '2 means columns'}.` } }, explain: `apply(m, ${t === 0 ? 1 : 2}, ${f}): 1 = rows, 2 = columns.`, rcheck: [R1(`apply(m, ${t === 0 ? 1 : 2}, ${f})`, t === 0 ? m.map(rw => FN[f][1](rw)) : [0, 1, 2].map(j => FN[f][1](m.map(rw => rw[j]))), mSetup(m))] });
     }, { target: 10 }),
     streak('u9-count', 'How many results?', 'One result per row or column', 'apply(m, 1, f) gives one result per row; apply(m, 2, f) one per column; sapply(v, f) one per item.', ctx => {
-      const r = ctx.rng, nr = RG.int(r, 2, 4), nc = RG.int(r, 2, 5), t = RG.int(r, 0, 2), m = M(r, nr, nc), n = RG.int(r, 3, 6);
+      const r = ctx.rng, nr = RG.int(r, 2, 4), nc = RG.pick(r, [2, 3, 4, 5].filter(x => x !== nr)), t = RG.int(r, 0, 2), m = M(r, nr, nc), n = RG.pick(r, [3, 4, 5, 6].filter(x => x !== nr));
       const code = t === 0 ? 'apply(m, 1, sum)' : t === 1 ? 'apply(m, 2, sum)' : `sapply(1:${n}, sqrt)`, ans = t === 0 ? nr : t === 1 ? nc : n;
       const lead = t === 2 ? [code] : [`m has ${nr} rows and ${nc} columns`, code];
       return E.count(ctx, { prompt: `How many results does <code>${code}</code> return?`, lead, pic: t === 2 ? null : Grid({ data: m.map(rw => rw.map(() => '')), compact: true, label: `matrix with ${nr} rows and ${nc} columns` }).wrap, answer: ans, max: 6, inputRows: nr,

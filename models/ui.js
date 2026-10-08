@@ -286,7 +286,7 @@ function ChipSet(items, { onChange = () => {}, cols = 2, states = ['', 'on'], la
 }
 
 // A grid of cells, rows x columns. `dots(r,c)` is how many observations sit in the cell. Tap to toggle when `tap`.
-function DesignGrid({ rows, cols, dots = () => 0, label = null, tap = false, onTap = () => {}, colGroups = null, caption = 'Design table', cell = 44, cellH = 44, flashCell = null, rowW = 0 }) {
+function DesignGrid({ rows, cols, dots = () => 0, label = null, tap = false, onTap = () => {}, colGroups = null, caption = 'Design table', cell = 44, cellH = 44, flashCell = null, tapOnly = null, rowW = 0 }) {
   const root = el('div', { class: 'dgrid', role: 'group', 'aria-label': caption });
   const api = { el: root, btns: {}, locked: false, state: {} };
   const tpl = `${rowW || 52}px repeat(${cols.length}, ${cell}px)`;
@@ -297,10 +297,11 @@ function DesignGrid({ rows, cols, dots = () => 0, label = null, tap = false, onT
     root.append(el('div', { class: 'dg-row' }, rl));
     cols.forEach((cl, c) => {
       const n = dots(r, c), k = r + ':' + c; api.state[k] = !!(tap ? false : n);
-      const b = el(tap ? 'button' : 'div', { class: 'dg-cell' + (tap ? ' tap' : '') + (flashCell && flashCell[0] === r && flashCell[1] === c ? ' flash' : ''), 'aria-label': `${rl}, ${cl}: ${n ? n + ' observation' + (n > 1 ? 's' : '') : 'empty'}`, ...(tap ? { 'aria-pressed': 'false' } : {}) });
+      const live = tap && (!tapOnly || (tapOnly[0] === r && tapOnly[1] === c));
+      const b = el(live ? 'button' : 'div', { class: 'dg-cell' + (live ? ' tap' : '') + (flashCell && flashCell[0] === r && flashCell[1] === c ? ' flash' : ''), 'aria-label': `${rl}, ${cl}: ${n ? n + ' observation' + (n > 1 ? 's' : '') : 'empty'}`, ...(live ? { 'aria-pressed': 'false' } : {}) });
       if (label) b.append(el('span', { class: 'dgn' }, label(r, c)));
       else { b.append(...Array.from({ length: Math.min(n, 4) }, () => el('i', { class: 'dgdot', 'aria-hidden': 'true' }))); if (n > 4) b.append(el('span', { class: 'dgn' }, String(n))); }
-      if (tap) b.addEventListener('click', () => { if (api.locked) return; api.toggle(r, c, true); });
+      if (live) b.addEventListener('click', () => { if (api.locked) return; api.toggle(r, c, true); });
       root.append(b); api.btns[k] = b;
     });
   });
@@ -349,11 +350,12 @@ function RangeSlider({ min = 0, max = 1, step = 0.01, value = 0, label = 'Slider
 }
 
 // Rows of dots, one row per person: each row's dots are one person's observations.
-function PersonRows(people, { onPick = null, flashIdx = -1, caption = 'Observations by person' } = {}) {
+function PersonRows(people, { onPick = null, flashIdx = -1, only = null, caption = 'Observations by person' } = {}) {
   const root = el('div', { class: 'prows', role: 'group', 'aria-label': caption });
   const api = { el: root, rows: [] };
   people.forEach((p, i) => {
-    const row = el(onPick ? 'button' : 'div', { class: 'prow' + (flashIdx === i ? ' flash' : ''), 'aria-label': `${p.label}: ${p.n} observations${p.group ? ', group ' + p.group : ''}`, ...(onPick ? { onclick: () => { api.rows.forEach((r, j) => r.classList.toggle('on', j === i)); onPick(i); } } : {}) },
+    const live = onPick && (only == null || only === i);
+    const row = el(live ? 'button' : 'div', { class: 'prow' + (flashIdx === i ? ' flash' : ''), 'aria-label': `${p.label}: ${p.n} observations${p.group ? ', group ' + p.group : ''}`, ...(live ? { onclick: () => { api.rows.forEach((r, j) => r.classList.toggle('on', j === i)); onPick(i); } } : {}) },
       el('span', { class: 'plabel' }, p.label), el('span', { class: 'pdots', 'aria-hidden': 'true' }, ...Array.from({ length: p.n }, () => el('i', { class: 'pd ' + (p.group === 'B' ? 'pdb' : p.group === 'A' ? 'pda' : '') }))));
     root.append(row); api.rows.push(row);
   });

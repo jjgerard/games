@@ -2,12 +2,13 @@
 // (always the first option, everything selected, same rows as the input, ...). Reported per sub-level over many questions.
 //   NODE_PATH=/opt/node22/lib/node_modules node tools/naive.js [questions=150] [port=8202]
 const { chromium } = require('playwright');
-const N = Number(process.argv[2] || 150), PORT = process.argv[3] || 8202;
+const N = Number(process.argv[2] || 150), PORT = process.argv[3] || 8202, FROM = process.argv[4] || '';
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
   const p = await (await b.newContext({ viewport: { width: 360, height: 640 } })).newPage();
   await p.goto(`http://localhost:${PORT}/index.html?seed=${Date.now() % 100000}`); await p.evaluate(() => localStorage.clear()); await p.reload();
   const subs = await p.evaluate(() => UNITS.flatMap(u => u.subs).filter(s => s.kind === 'streak').map(s => ({ id: s.id, target: s.target, hearts: s.hearts })));
+  const startAt = FROM ? subs.findIndex(s => s.id === FROM) : 0; subs.splice(0, Math.max(0, startAt));
   let flagged = 0;
   for (const s of subs) {
     await p.evaluate(id => { closeActivity(); openActivity(UNITS.flatMap(u => u.subs).find(x => x.id === id)); }, s.id);
