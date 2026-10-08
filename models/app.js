@@ -95,7 +95,12 @@ function firstFocus(overlay) {
 // Controls disable or disappear when you answer, which would drop keyboard focus
 // on the page. Always put it somewhere sensible instead: the next thing to press.
 function focusAction() { const b = $('quiz-action'); if (b && !b.disabled) b.focus(); }
-function focusQuestion() { setTimeout(() => { const f = firstFocus($('quiz-overlay')); if (f) f.focus(); }, 0); }
+// Only move focus into a new question when the player is using the keyboard. For touch and mouse a programmatic focus
+// draws a square ring round the first control, which looks like a selection (or like the tutorial flash).
+let usingKeys = false;
+document.addEventListener('keydown', () => { usingKeys = true; }, true);
+document.addEventListener('pointerdown', () => { usingKeys = false; }, true);
+function focusQuestion() { if (!usingKeys) return; setTimeout(() => { const f = firstFocus($('quiz-overlay')); if (f) f.focus(); }, 0); }
 function openOverlay(id) {
   const o = $(id); focusStack.push({ id, from: document.activeElement });
   o.classList.remove('hidden'); syncInert();
@@ -190,8 +195,8 @@ function nextQuestion() {
   const btn = $('quiz-action'); btn.textContent = sub.kind === 'tutorial' ? 'Waiting for your move…' : 'Check'; btn.disabled = true;
   const ctx = buildCtx(msg => {
     run.phase = 'review'; setFeedback(msg, 'good'); playCorrectSound();
-    markDone(sub.id, true); setFeedback(`${msg} Sub-level complete: +${POINTS_SUB_COMPLETE} pts.`, 'good');
-    btn.textContent = 'Back to sub-levels'; btn.disabled = false; run.finished = true; focusAction();
+    markDone(sub.id, true);
+    btn.textContent = `Back to sub-levels (+${POINTS_SUB_COMPLETE} pts)`; btn.disabled = false; run.finished = true; focusAction();
   });
   run.ctrl = sub.build(ctx); focusQuestion();
 }
@@ -208,8 +213,8 @@ $('quiz-action').onclick = () => {
     renderStreak();
     if (res.complete) {
       markDone(run.sub.id, true); run.finished = true;
-      setFeedback(`${r.message} Sub-level complete: +${POINTS_SUB_COMPLETE} pts!`, 'good'); playChimeSound();
-      btn.textContent = 'Back to sub-levels';
+      playChimeSound();
+      btn.textContent = `Back to sub-levels (+${POINTS_SUB_COMPLETE} pts)`;
     } else btn.textContent = res.forgiven ? 'Next (you have used a heart)' : 'Next';
     btn.disabled = false; focusAction();
   } else if (run.phase === 'review') {
