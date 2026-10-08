@@ -357,3 +357,106 @@ h1 { font-size: 1.5rem; margin: .2em 0 .3em; letter-spacing: -.02em; }
 .editor-title.sr-only { position: absolute; }
 .editor-actions { margin-left: auto; }
 .editor-header { gap: 10px; }
+
+/* ---- bag columns with flat chip stacks (Many bags; Unit 1 chip questions) ---- */
+.shelfstrip { gap: 2px; }
+.shelfstrip .sbag { flex: 0 0 auto; }
+.shelfstrip svg { width: min(66px, calc((100vw - 30px) / 5 - 2px)); height: auto; }
+.chiprow { display: grid; gap: 4px; align-items: start; }
+.chiprow.n3 { grid-template-columns: repeat(3, 1fr); } .chiprow.n4 { grid-template-columns: repeat(4, 1fr); }
+.chipcol2 { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.cbag { width: min(100%, 118px, 17vh); } .cbag svg { width: 100%; height: auto; display: block; }
+.stackzone { display: flex; justify-content: center; align-items: flex-end; gap: 4px; height: 62px; width: 100%; }
+.stack { width: 40%; max-width: 38px; display: flex; flex-direction: column-reverse; gap: 1px; }
+.stack .chip { display: block; height: 5px; border-radius: 2px; background: #3b3270; }
+.stack.truth .chip { background: var(--good); }
+.cbtns { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 4px; width: 100%; justify-items: center; }
+.cbtn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--accent); background: #fff; color: var(--accent); font-size: 1.5rem; font-weight: 800; line-height: 1; padding: 0; }
+.cbtn.plus { background: var(--accent); color: #fff; }
+.cbtn:disabled { opacity: .35; }
+.chipnums { display: flex; justify-content: center; gap: 12px; font-weight: 800; min-height: 44px; align-items: center; }
+.chipnums .nm { color: #3b3270; } .chipnums .nt { color: var(--good); }
+.chipnums.hidden { display: none; }
+.drawnbelow { margin: auto 0; }
+@media (max-width: 340px) { .cbtn { width: 36px; height: 36px; } .cbtns { grid-template-columns: repeat(auto-fit, minmax(36px, 1fr)); } }
+@media (max-height: 600px) { .cbag { width: min(100%, 118px, 15vh); } .stackzone { height: 46px; } .stack .chip { height: 3px; } }
+
+/* ======================================================================
+   Units 2-6: plots, bars on a grid, piles of samples, traces, tables
+   ====================================================================== */
+.plotwrap { position: relative; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+.plot svg { width: 100%; height: 100%; display: block; }
+.pt { font-size: 19px; font-weight: 700; fill: var(--ink); }
+.pt.ptitle { fill: var(--muted); }
+.paxis { stroke: var(--ink); stroke-width: 1.6; }
+.pgrid { stroke: var(--line); stroke-width: 1; }
+.pdot { fill: var(--accent); stroke: #fff; stroke-width: 1.2; }
+.pdot.hollow { fill: #fff; stroke: var(--accent); stroke-width: 3; }
+.pdot.grey { fill: #8a847a; }
+.pdot.ghostdot { fill: #fff; stroke: #6a645b; stroke-width: 2; }
+.pdot.sim { fill: var(--circle-dark); stroke: #fff; }
+.pline { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; }
+.pline.good { stroke: var(--good); } .pline.fine { stroke-width: 1.4; opacity: .55; } .pline.dash { stroke-dasharray: 6 4; stroke-width: 2.2; }
+.pline.grey { stroke: #8a847a; } .pline.circ { stroke: var(--circle-dark); }
+.pband { fill: rgba(52,48,107,.14); } .pband.good { fill: rgba(46,125,79,.18); }
+.hdl { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; cursor: grab; touch-action: none; }
+.hdl::before { content: ""; position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); box-sizing: border-box; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.hdl.y::after, .hdl.x::after { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 800; color: var(--accent); }
+.hdl.y::after { content: "\2195"; } .hdl.x::after { content: "\2194"; }
+.hdl:focus-visible { outline: 3px solid var(--accent); outline-offset: 0; }
+.hdl.locked { cursor: default; opacity: .8; }
+.hdl.flash::before { animation: hdlflash 1.1s ease-in-out infinite; }
+@keyframes hdlflash { 0%, 10% { background: #fff; box-shadow: 0 0 0 0 rgba(193,68,58,0); } 22%, 55% { background: var(--danger); box-shadow: 0 0 0 8px rgba(193,68,58,.35); } 70%, 100% { background: #fff; box-shadow: 0 0 0 0 rgba(193,68,58,0); } }
+.as-thumb.flash::before { animation: hdlflash 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .hdl.flash::before, .as-thumb.flash::before { animation: none; background: var(--danger); } }
+
+.barstrip svg, .pile svg, .trace svg, .shrinkstrip svg { width: 100%; height: auto; display: block; }
+.bs-bar { fill: rgba(52,48,107,.55); stroke: var(--accent); stroke-width: 1; }
+.barstrip.lik .bs-bar { fill: rgba(194,122,26,.6); stroke: #8f5710; }
+.barstrip.post .bs-bar { fill: rgba(46,125,79,.6); stroke: #1f6a3f; }
+.bs-bar.hi { fill: var(--good); stroke: #14502d; stroke-width: 2.5; }
+.barstrip .bs-cap { fill: var(--ink); paint-order: stroke; stroke: rgba(246,244,239,.9); stroke-width: 5px; stroke-linejoin: round; }
+.bs-curve { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 5 3; }
+.bs-mark { stroke: var(--danger); stroke-width: 3; stroke-dasharray: 5 3; }
+.pile-bar { fill: #8a847a; } .pile-bar.left { fill: var(--accent); } .pile-bar.right { fill: #b86b00; }
+.pile-cut { stroke: var(--ink); stroke-width: 3; }
+.bar-or { background: #a85f00; }
+.trace-bg { fill: #fff; stroke: var(--line); stroke-width: 2; }
+.trace-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.trace-line.c0 { stroke: var(--accent); } .trace-line.c1 { stroke: var(--circle-dark); } .trace-line.c2 { stroke: var(--square-dark); } .trace-line.c3 { stroke: #5b5348; }
+
+.rowname { font-weight: 800; font-size: 1rem; line-height: 1.1; padding: 1px 4px; }
+.rownum.named { width: auto; height: auto; border-radius: 6px; padding: 2px 5px; flex: 0 0 auto; font-size: .65rem; font-size: 1rem; max-width: 96px; line-height: 1.1; }
+.ptable { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(var(--cols), minmax(0, 1fr)); gap: 4px; }
+.pth { font-weight: 800; text-align: center; color: var(--muted); font-size: 1rem; align-self: end; min-height: 24px; white-space: nowrap; }
+.ptn { font-weight: 800; display: flex; align-items: center; min-height: 44px; font-size: 1rem; }
+.ptc { min-height: 44px; min-width: 44px; border: 2px solid var(--line); border-radius: 10px; background: #fff; font-size: 1rem; font-weight: 700; color: var(--ink); padding: 0 2px; }
+.ptc.on { border-color: var(--accent); background: var(--accent-tint); }
+.ptc.right { border-color: var(--good); background: var(--good-tint); }
+.ptc.wrong { border-color: var(--danger); background: var(--danger-tint); }
+.ptc:disabled { opacity: 1; color: var(--ink); }
+.ptable.row .ptc { border-radius: 0; border-left: 0; border-right: 0; }
+.ptable.row .ptc.on, .ptable.row .ptc.right, .ptable.row .ptc.wrong { border-left: 0; }
+.ptn { cursor: default; }
+
+.shrinkstrip .ss-band { fill: rgba(46,125,79,.16); stroke: none; }
+.shrinkstrip .ss-mu { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 4 3; }
+.shrinkstrip .ss-obs { fill: #6a645b; }
+.shrinkstrip .ss-ring { fill: #fff; stroke: var(--accent); stroke-width: 3; }
+.shrinkstrip .ss-pool { fill: var(--good); stroke: #14502d; stroke-width: 1.5; }
+.shrinkstrip .ss-link { stroke: var(--good); stroke-width: 3; opacity: .7; }
+.shrinkstrip.sm svg { max-height: 54px; }
+
+.pickrow { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.pickbtn { min-height: 44px; min-width: 44px; padding: 8px 16px; border-radius: 12px; border: 3px solid var(--line); background: #fff; color: var(--ink); font-weight: 800; font-size: 1rem; flex: 1 1 120px; }
+.pickbtn.on { border-color: var(--accent); background: var(--accent-tint); }
+.pickbtn.right { border-color: var(--good); background: var(--good-tint); } .pickbtn.wrong { border-color: var(--danger); background: var(--danger-tint); }
+.pickbtn:disabled { opacity: 1; color: var(--ink); }
+.pickbtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.stage .plotwrap + .pickrow, .stage .pickrow { margin-top: 2px; }
+
+.ssgroup { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.barsline .shrinkstrip, .barsline .barstrip { flex: 1; min-width: 0; }
+
+.pfill { fill: var(--accent); } .pfill.good { fill: var(--good); }
+.pickrow.two .pickbtn { flex: 1 1 calc(50% - 8px); }

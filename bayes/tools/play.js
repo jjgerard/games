@@ -2,7 +2,7 @@
 //   (python3 -m http.server 8123 &) ; NODE_PATH=/opt/node22/lib/node_modules node tools/play.js
 const { chromium } = require('playwright');
 const SIZES = [[360, 640], [320, 568], [414, 800]];
-const URL = 'http://localhost:8123/index.html';
+const URL = 'http://localhost:' + (process.env.PORT || 8123) + '/index.html';
 let failures = 0;
 const ok = (label, cond, extra = '') => { if (!cond) failures++; console.log(`${cond ? 'PASS' : 'FAIL'} ${label}${cond ? '' : ' ' + extra}`); };
 
@@ -347,12 +347,12 @@ async function checkFit(page, label) {
     await page.keyboard.press('Enter'); await page.waitForTimeout(80);
     ok('keyboard: Enter on the button closes the activity', await page.$eval('#quiz-overlay', e => e.classList.contains('hidden')));
     // keyboard-only chips: Enter on each bag adds a chip; announced count; Check by keyboard
-    await page.evaluate(() => openActivity(UNITS[1].subs.find(s => s.id === 'u1-prior'))); await page.waitForSelector('.bagbtn'); await page.waitForTimeout(50);
-    ok('chips: focus starts on a bag', await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('bagbtn')));
-    const bags = await page.$$('.bagbtn');
-    for (let i = 0; i < 10; i++) { await bags[i % 4].focus(); await page.keyboard.press('Enter'); }
+    await page.evaluate(() => openActivity(UNITS[1].subs.find(s => s.id === 'u1-prior'))); await page.waitForSelector('.cbtn.plus'); await page.waitForTimeout(50);
+    ok('chips: focus starts on a chip button', await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('cbtn')));
+    const bags = await page.$$('.cbtn.plus');
+    for (let i = 0; i < 10; i++) { await bags[i % 3].focus(); await page.keyboard.press('Enter'); }
     ok('chips: Enter on bags places all 10 chips and says so', /All 10 chips placed/.test(await page.textContent('.chipstatus')));
-    ok('chips: each bag button says how many chips are on it', /\d+ chips? on it/.test(await bags[0].getAttribute('aria-label')), await bags[0].getAttribute('aria-label'));
+    ok('chips: each + button says how many chips are on it', /\d+ chips? on it/.test(await bags[0].getAttribute('aria-label')), await bags[0].getAttribute('aria-label'));
     await page.focus('#quiz-action'); await page.keyboard.press('Enter'); await page.waitForTimeout(50);
     ok('chips: Check by keyboard gives feedback and focus stays on the next button', (await page.textContent('#quiz-feedback')).length > 10 && await page.evaluate(() => document.activeElement && document.activeElement.id === 'quiz-action'));
     // a drag control is operable by keyboard too

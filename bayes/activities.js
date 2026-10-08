@@ -324,7 +324,7 @@ function buildSeveral(ctx) {
       const ok = Math.abs(bar.get() - truth) <= TOL_BELIEF + 1e-9;
       bar.lock(); bar.ghost(truth);
       const seen = draws.map(d => d === 'c' ? 'circle' : 'square').join(', ');
-      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}You saw: ${seen}. Each draw nudges the belief, and a circle then a square can cancel out. The answer is ${pct(truth)}% for A.` };
+      return { correct: ok, message: `${ok ? 'Yes. ' : 'Not quite. '}You saw: ${seen}. A circle then a square can cancel out. Answer: ${pct(truth)}% for A.` };
     },
     reveal() {
       bags.remove(); trail.innerHTML = '';
@@ -350,10 +350,11 @@ function buildChips(ctx) {
   const draws = Array.from({ length: N }, () => BM.drawShape(rng, trueP));
   const k = draws.filter(d => d === 'c').length;
   const post = BM.gridPosterior(ps, k, N).map(x => x * 10);
-  // the drawn shapes sit inside the sentence, so no row of their own is needed
-  ctx.setPrompt(`Drawn: <b>${draws.map(d => iconWord(d)).join(' ')}</b>. Spread 10 chips over the bags that could have made them.`);
+  ctx.setPrompt('Spread your <b>10 chips</b> over the bags that could have made these shapes.');
   const panel = BagChips({ total: 10, kinds: ps.map((p, i) => ({ p, seed: 20 + i })), onChange: c => ctx.setReady(sumOf(c) === 10) });
-  ctx.stage.append(panel.el, panel.status);
+  const tray = Tray(); draws.forEach(d => tray.add(d));
+  // the drawn shapes sit below the bags, centred in the space above Check
+  ctx.stage.append(panel.el, panel.status, el('div', { class: 'bigshape drawnbelow' }, 'Drawn:', tray.el));
   const dev = () => panel.chips.reduce((a, c, i) => a + Math.abs(c - post[i]), 0);
   return {
     check() {
@@ -393,12 +394,9 @@ const UNITS = [
       { id: 'u0-rare', name: 'Rare bags', blurb: 'Some bags are scarcer.', kind: 'streak', target: 5, hearts: 2, build: ctx => buildTwoBags(ctx, true),
         help: 'Look at the shelf: one kind of bag is rare. The shape you see may point at the rare kind, but rare is still rare.' },
       { id: 'u0-chips', name: 'Many bags', blurb: 'Spread ten chips of belief.', kind: 'streak', target: 5, hearts: 2, build: buildChips,
-        help: 'Use + and − to place all ten chips across the kinds of bag. Put more chips where you believe more.' },
+        help: 'The shapes at the bottom were drawn from one bag. Use + and − to place all ten chips across the four kinds of bag. Put more chips on the bags that could easily have made them. After you check, green chips show where they belonged.' },
     ],
   },
-  { id: 'u1', title: 'Unit 1', locked: true, subs: [] },
-  { id: 'u2', title: 'Unit 2', locked: true, subs: [] },
-  { id: 'u3', title: 'Unit 3', locked: true, subs: [] },
 ];
 
 // ---------------------------------------------------------------------------

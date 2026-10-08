@@ -239,40 +239,53 @@ function BeliefBar({ value = 0.5, label = 'How sure it is kind A', onChange = ()
 // Unit 1 pieces
 // ===========================================================================
 
-// Four bags in a 2x2 grid, each as big as the bags in "Which bag?", so the
-// shapes inside can really be read. The controls sit ON the bag, so nothing
-// needs room beside or below it: tap the bag to add a chip, the "-" in its top
-// left corner takes one off, its kind is badged top right, and the chips show
-// as dots across the top. With `total` the chips are a fixed budget to spread
-// (a belief); with total = null each bag is its own count, 0..perMax (a
-// likelihood).
+// A bag holding exactly five shapes, drawn large so each one is easy to see.
+// nC circles and 5 - nC squares, laid out in two rows.
+function bag5SVG(nC, { seed = 1, label = '' } = {}) {
+  const rng = BM.mulberry32(seed * 733 + nC * 17);
+  const kinds = BM.shuffle(rng, [...Array(nC).fill('c'), ...Array(5 - nC).fill('s')]);
+  const pos = [[48, 79], [80, 77], [112, 79], [64, 112], [96, 112]];
+  const r = 14; let inner = '';
+  kinds.forEach((k, i) => {
+    const [cx, cy] = pos[i];
+    inner += k === 'c' ? `<circle class="sh sh-c" cx="${cx}" cy="${cy}" r="${r}"/>` : `<rect class="sh sh-s" x="${cx - r}" y="${cy - r}" width="${2 * r}" height="${2 * r}" rx="3"/>`;
+  });
+  return `<svg class="b5" viewBox="0 0 160 150" role="img" aria-label="${label || `Bag with ${nC} circle${nC === 1 ? '' : 's'} and ${5 - nC} square${5 - nC === 1 ? '' : 's'}`}">
+    <rect class="bagbody" x="15" y="44" width="130" height="98" rx="26"/>
+    <path class="bagbody" d="M48 46 Q80 18 112 46 Z"/><rect class="bagtie" x="58" y="38" width="44" height="9" rx="4"/>${inner}</svg>`;
+}
+
+// One column per kind of bag: the bag, a flat stack of chips (yours in navy,
+// and after checking the right ones in green) and - / + buttons. With `total`
+// the chips are a fixed budget to spread (a belief); with total = null each bag
+// is its own count, 0..perMax (a likelihood).
 function BagChips({ kinds, total = 10, perMax = 10, onChange = () => {}, noun = 'chip' }) {
   const chips = kinds.map(() => 0);
-  const root = el('div', { class: 'bagchips' });
+  const root = el('div', { class: 'chiprow n' + kinds.length });
   const status = el('div', { class: 'chipstatus', 'aria-live': 'polite' });
   const sum = () => chips.reduce((a, b) => a + b, 0);
   const cells = kinds.map((k, i) => {
-    const nc = BM.circlesPerTen(k.p);
-    const wrap = el('div', { class: 'bagwrap' });
-    wrap.innerHTML = bagSVG(nc, 10 - nc, { seed: k.seed, size: 200 });
-    const add = el('button', { class: 'bagbtn' }); add.append(wrap.firstChild);
-    const minus = el('button', { class: 'cellminus', onclick: () => move(i, -1) }, '−');
-    const badge = el('div', { class: 'cellbadge', 'aria-hidden': 'true' }, pct(k.p) + '%');
-    const dots = el('div', { class: 'celldots', 'aria-hidden': 'true' });
-    add.addEventListener('click', () => move(i, 1));
-    wrap.append(add, minus, badge, dots);
-    const cell = el('div', { class: 'bigcell' }, wrap);
-    root.append(cell); return { add, minus, dots, wrap };
+    const nc = Math.round(k.p * 5);
+    const bag = el('div', { class: 'cbag', html: bag5SVG(nc, { seed: k.seed }) });
+    const mine = el('div', { class: 'stack mine', 'aria-hidden': 'true' }), truth = el('div', { class: 'stack truth', 'aria-hidden': 'true' });
+    const zone = el('div', { class: 'stackzone' }, mine, truth);
+    const minus = el('button', { class: 'cbtn', onclick: () => move(i, -1) }, '−');
+    const plus = el('button', { class: 'cbtn plus', onclick: () => move(i, 1) }, '+');
+    const btns = el('div', { class: 'cbtns' }, minus, plus);
+    const nums = el('div', { class: 'chipnums hidden' });
+    const cell = el('div', { class: 'chipcol2' }, bag, zone, btns, nums);
+    root.append(cell); return { mine, truth, minus, plus, btns, nums, kind: k };
   });
   const paint = () => {
     cells.forEach((c, i) => {
-      c.dots.innerHTML = ''; for (let j = 0; j < chips[i]; j++) c.dots.append(el('span', { class: 'cdot' }));
-      const label = `${pct(kinds[i].p)} percent circles bag`;
-      c.add.setAttribute('aria-label', `Add a ${noun} to the ${label}. ${chips[i]} ${noun}${chips[i] === 1 ? '' : 's'} on it.`);
+      c.mine.innerHTML = ''; for (let j = 0; j < chips[i]; j++) c.mine.append(el('span', { class: 'chip' }));
+      const label = `bag with ${Math.round(c.kind.p * 5)} of 5 shapes circles`;
+      c.plus.setAttribute('aria-label', `Add a ${noun} to the ${label}. ${chips[i]} ${noun}${chips[i] === 1 ? '' : 's'} on it.`);
       c.minus.setAttribute('aria-label', `Remove a ${noun} from the ${label}`);
       c.minus.disabled = chips[i] === 0;
+      c.plus.disabled = (total != null && sum() >= total) || chips[i] >= perMax;
     });
-    status.textContent = total == null ? 'Tap a bag to add one, − to take one off' : sum() === total ? `All ${total} ${noun}s placed` : `Tap a bag to add a ${noun} · ${total - sum()} left`;
+    status.textContent = total == null ? `Use + and − to set how many` : sum() === total ? `All ${total} ${noun}s placed` : `${total - sum()} ${noun}${total - sum() === 1 ? '' : 's'} left to place`;
     onChange(chips);
   };
   const move = (i, d) => {
@@ -284,14 +297,20 @@ function BagChips({ kinds, total = 10, perMax = 10, onChange = () => {}, noun = 
   return {
     el: root, status, chips, sum, total,
     set(arr) { arr.forEach((c, i) => { chips[i] = c; }); paint(); },
-    // After checking: no more changes, and each bag says what you put and what was right.
-    lock(truth) {
+    // After checking: no more changes; the right chips appear in green next to yours.
+    lock(t) {
       root.classList.add('locked');
       cells.forEach((c, i) => {
-        c.add.disabled = true; c.minus.remove();
-        c.dots.innerHTML = `<span class="verdict">You: ${chips[i]}<br>Right: ${Math.round(truth[i])}</span>`;
-        c.dots.setAttribute('aria-hidden', 'false'); c.dots.setAttribute('role', 'text');
+        const right = Math.round(t[i]);
+        c.plus.disabled = true; c.btns.remove();
+        for (let j = 0; j < right; j++) c.truth.append(el('span', { class: 'chip' }));
+        c.nums.classList.remove('hidden');
+        c.nums.innerHTML = `<span class="nm">${chips[i]}</span><span class="nt">${right}</span>`;
+        c.nums.setAttribute('aria-label', `You put ${chips[i]}, the right answer is ${right}`);
+        c.nums.setAttribute('role', 'text');
       });
+      const diffs = cells.map((c, i) => `${chips[i]} against ${Math.round(t[i])}`).join(', ');
+      status.textContent = 'Navy: yours. Green: right.'; status.setAttribute('aria-label', `Yours against right: ${diffs}`);
     },
   };
 }
@@ -307,8 +326,9 @@ function KindLabel(p, count = null) {
 // kind bags in the grid can be matched to it by their percentages.
 function ShelfStrip(counts, ps) {
   const bags = []; counts.forEach((c, i) => { for (let j = 0; j < c; j++) bags.push(ps[i]); });
-  return el('div', { class: 'shelfstrip', role: 'group', 'aria-label': `The shelf: ${bags.length} bags, ${counts.map((c, i) => `${c} that are ${pct(ps[i])} percent circles`).filter((_, i) => counts[i] > 0).join(', ')}` },
-    el('span', { class: 'shelfword' }, 'Shelf'), bags.map(p => el('span', { html: miniKindBag(pct(p) + '%') })));
+  const desc = counts.map((c, i) => c ? `${c} with ${Math.round(ps[i] * 5)} circles of 5` : '').filter(Boolean).join(', ');
+  return el('div', { class: 'shelfstrip', role: 'group', 'aria-label': `The shelf: ${bags.length} bags: ${desc}` },
+    bags.map((p, i) => el('span', { class: 'sbag', html: bag5SVG(Math.round(p * 5), { seed: 40 + Math.round(p * 5) }) })));
 }
 
 // A row of bars, one per kind, scaled so the tallest fills the row.

@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
   const p = await (await b.newContext({ viewport: { width: 360, height: 640 } })).newPage();
-  await p.goto('http://localhost:8123/index.html?seed=' + (Date.now() % 99999)); await p.evaluate(() => localStorage.clear()); await p.reload();
+  await p.goto('http://localhost:' + (process.env.PORT || 8123) + '/index.html?seed=' + (Date.now() % 99999)); await p.evaluate(() => localStorage.clear()); await p.reload();
   const run = async (id, n, f) => {
     await p.evaluate(id => openActivity(UNITS.flatMap(u => u.subs).find(s => s.id === id)), id);
     const out = []; for (let i = 0; i < n; i++) { await p.waitForSelector('#stage > *'); out.push(await p.evaluate(f)); await p.evaluate(() => __run.ctrl.solve()); await p.evaluate(() => document.getElementById('quiz-action').click());
@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   const rate = a => (100 * a.filter(Boolean).length / a.length).toFixed(0) + '%';
   const l1 = (a, b) => a.reduce((s, x, i) => s + Math.abs(x - b[i]), 0);
   const prod = await run('u1-product', 300, () => { const i = __run.ctrl.info; const u = i.expected.map(() => 2.5);
-    return { prior: l1(i.prior.map(x => Math.round(x)), i.expected) <= 3, lik: l1(i.lik.map(x => Math.round(x)), i.expected) <= 3, uniform: l1(u, i.expected) <= 3 }; });
+    return { prior: l1(i.prior.map(x => Math.round(x)), i.expected) <= 2, lik: l1(i.lik.map(x => Math.round(x)), i.expected) <= 2, uniform: l1(u, i.expected) <= 2 }; });
   for (const k of ['prior', 'lik', 'uniform']) console.log(`u1-product: "${k === 'prior' ? 'follow only the shelf' : k === 'lik' ? 'follow only the draw' : 'spread chips evenly'}" would be accepted ${rate(prod.map(x => x[k]))} of the time`);
   const pri = await run('u1-prior', 300, () => { const i = __run.ctrl.info; return l1(i.expected.map(() => 2.5), i.expected) <= 2; });
   console.log(`u1-prior: "spread chips evenly" accepted ${rate(pri)}`);

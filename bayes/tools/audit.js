@@ -15,7 +15,7 @@
 const { chromium } = require('playwright');
 const VERBOSE = process.argv.includes('--verbose');
 const SIZES = [[360, 640], [320, 568], [414, 800]];
-const URL = 'http://localhost:8123/index.html?seed=31';
+const URL = 'http://localhost:' + (process.env.PORT || 8123) + '/index.html?seed=31';
 
 const inPage = () => {
   const out = { targets: [], pictures: [], contrast: [], names: [], graphics: [], fonts: [] };
@@ -36,10 +36,10 @@ const inPage = () => {
     if (!nameOf(e)) out.names.push({ sig: sig(e), what: 'control has no accessible name' });
   }
   // ---- pictures
-  const pics = [['.bagbox svg', 'bag'], ['.kindhead svg.bag-sm', 'bag'], ['.chipcol svg.bag-sm', 'bag'], ['.fgrid svg', 'gridshape'], ['.tray svg', 'tray'], ['.shelf svg', 'shelf'], ['.drawnbox svg', 'tray'], ['.bigshape svg', 'tray']];
+  const pics = [['.bagbox svg', 'bag'], ['.kindhead svg.bag-sm', 'bag'], ['.chipcol svg.bag-sm', 'bag'], ['.cbag svg', 'bag'], ['.sbag svg', 'shelfbag'], ['.fgrid svg', 'gridshape'], ['.tray svg', 'tray'], ['.shelf svg', 'shelf'], ['.drawnbox svg', 'tray'], ['.bigshape svg', 'tray']];
   for (const [q, kind] of pics) for (const e of scope.querySelectorAll(q)) {
     if (!shown(e)) continue; const r = e.getBoundingClientRect();
-    let shapeMin = null; if (kind === 'bag') { const sh = [...e.querySelectorAll('circle.sh, rect.sh')]; if (sh.length) shapeMin = Math.min(...sh.map(s => { const b = s.getBoundingClientRect(); return Math.min(b.width, b.height); })); }
+    let shapeMin = null; if (kind === 'bag' || kind === 'shelfbag') { const sh = [...e.querySelectorAll('circle.sh, rect.sh')]; if (sh.length) shapeMin = Math.min(...sh.map(s => { const b = s.getBoundingClientRect(); return Math.min(b.width, b.height); })); }
     out.pictures.push({ sig: sig(e), kind, w: Math.round(r.width), shape: shapeMin == null ? null : Math.round(shapeMin * 10) / 10 });
   }
   // ---- graphics need a text alternative (themselves, or a labelled container)
@@ -103,7 +103,8 @@ const inPage = () => {
       const minT = small ? 36 : 44;
       for (const t of r.targets) { const m = Math.min(t.w, t.h); if (m < 24) add('TARGET<24', t.sig, `${t.w}x${t.h} "${t.name.slice(0, 18)}"`, tag + ' ' + label); else if (m < minT) add(`TARGET<${minT}`, t.sig, `${t.w}x${t.h} "${t.name.slice(0, 18)}"`, tag + ' ' + label); }
       for (const p of r.pictures) {
-        if (p.kind === 'bag') { if (p.w < (small ? 64 : 80)) add('PICTURE', p.sig, `bag ${p.w}px wide (need ${small ? 64 : 80})`, tag + ' ' + label); if (p.shape != null && p.shape < (small ? 8 : 9)) add('PICTURE', p.sig, `shapes inside only ${p.shape}px across (need ${small ? 8 : 9})`, tag + ' ' + label); }
+        if (p.kind === 'shelfbag') { if (p.w < (small ? 56 : 60)) add('PICTURE', p.sig, `shelf bag ${p.w}px wide`, tag + ' ' + label); if (p.shape != null && p.shape < 9) add('PICTURE', p.sig, `shelf shapes only ${p.shape}px`, tag + ' ' + label); }
+        else if (p.kind === 'bag') { if (p.w < (small ? 64 : 80)) add('PICTURE', p.sig, `bag ${p.w}px wide (need ${small ? 64 : 80})`, tag + ' ' + label); if (p.shape != null && p.shape < (small ? 8 : 9)) add('PICTURE', p.sig, `shapes inside only ${p.shape}px across (need ${small ? 8 : 9})`, tag + ' ' + label); }
         else if (p.kind === 'gridshape' && p.w < 34) add('PICTURE', p.sig, `${p.w}px`, tag + ' ' + label);
         else if (p.kind === 'tray' && p.w < 20) add('PICTURE', p.sig, `${p.w}px`, tag + ' ' + label);
       }
